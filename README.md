@@ -4,9 +4,7 @@
 
 > Agents should not start every session with amnesia — but they shouldn't get to write whatever they want either.
 
-`vouch` is an AKBP-compatible (Agent Knowledge Base Protocol) implementation that adds an explicit **review gate**: agents *propose* writes; humans *approve* them with `vouch approve`. Approved artifacts are plain files on disk — YAML for claims, markdown for pages — so the KB lives in your repo, is reviewed in PRs, diffs cleanly, and can be exported as a portable bundle.
-
-Compatible with the [AKBP v0.1 draft](https://github.com/rohitg00/akbp). Covers compliance levels 1–3 plus parts of level 4 (sessions, crystallize, lint, doctor, export/import).
+`vouch` is a knowledge base for LLM agents with an explicit **review gate**: agents *propose* writes; humans *approve* them with `vouch approve`. Approved artifacts are plain files on disk — YAML for claims, markdown for pages — so the KB lives in your repo, is reviewed in PRs, diffs cleanly, and can be exported as a portable bundle.
 
 Still alpha — surface is small on purpose; expect breaking changes pre-1.0.
 
@@ -46,7 +44,7 @@ vouch reject <id> --reason "..."
 git add .vouch/ && git commit -m "kb: approve auth-uses-jwt"
 ```
 
-## Object model (AKBP-aligned)
+## Object model
 
 ```
 Source     immutable input material (file, URL, transcript, commit, …)
@@ -196,21 +194,20 @@ vouch import-apply kb.tar.gz --on-conflict skip  # apply (default skip; never de
 
 ## Compared to neighbours
 
-| | mem0 / Letta | LLM-Wiki tools | AKBP reference | **vouch** |
-|---|---|---|---|---|
-| Knowledge lives in | a service | filesystem | filesystem | your **repo** |
-| Review of writes | none | none | dry-run + approval flag | **explicit `approve`** |
-| Evidence required | no | optional | enforced | **enforced** |
-| Per-agent attribution | partial | none | yes | **yes** (audit log) |
-| Graph (entities + relations) | no | no | yes | **yes** |
-| FTS5 search | no | varies | yes | **yes** |
-| Portable bundle | no | no | yes | **yes** |
-| Transports | SDK / HTTP | none | JSONL | **MCP + JSONL** |
-| Compliance level | n/a | L0–L1 | L0–L5 | **L1–L3 + parts of L4** |
+| | mem0 / Letta | LLM-Wiki tools | **vouch** |
+|---|---|---|---|
+| Knowledge lives in | a service | filesystem | your **repo** |
+| Review of writes | none | none | **explicit `approve`** |
+| Evidence required | no | optional | **enforced** |
+| Per-agent attribution | partial | none | **yes** (audit log) |
+| Graph (entities + relations) | no | no | **yes** |
+| FTS5 search | no | varies | **yes** |
+| Portable bundle | no | no | **yes** |
+| Transports | SDK / HTTP | none | **MCP + JSONL** |
 
 ## Status
 
-Pre-1.0. What's *not* in this implementation: vector embeddings (BM25/FTS5 only), per-runtime adapter templates, benchmark fixtures, conformance suite, multi-agent sync, scopes beyond a single field on Claim/Source. If a hole matters to you, file an issue.
+Pre-1.0. What's *not* in this implementation: vector embeddings (BM25/FTS5 only), per-runtime adapter templates, benchmark fixtures, multi-agent sync, scopes beyond a single field on Claim/Source. If a hole matters to you, file an issue.
 
 ## License
 
