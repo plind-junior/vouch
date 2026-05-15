@@ -1,0 +1,11 @@
+# Evidence is a span pointer into a Source. Use when a claim is backed
+# by a *specific part* of a source rather than the whole document.
+
+id: kebab-case-slug
+source_id: <sha256-of-the-source>
+source_type: file        # mirrors the source's type for fast filtering
+locator: "L10-L20"       # span ref: line range, timestamp "t=00:14:23", anchor "#section-3"
+quote: ""                # extracted text from the span (optional but recommended)
+hash: ""                 # sha256 of the quoted span (optional)
+
+created_at: 2026-05-17T00:00:00Z

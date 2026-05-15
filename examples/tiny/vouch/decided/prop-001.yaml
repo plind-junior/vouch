@@ -1,0 +1,15 @@
+id: prop-001
+kind: claim
+proposed_by: example-agent
+proposed_at: 2026-04-12T09:13:40Z
+payload:
+  text: The service authenticates requests with signed JWTs in the Authorization header.
+  type: decision
+  evidence:
+    - 3e2f1b8e7a4c9f5e0b2d6c1a4f8e9d3b7c5a2e1f0d8b6c4a3e2f1b8e7a4c9f5e
+  confidence: 0.95
+rationale: Established in the Nov 2025 auth decision meeting (cited).
+status: approved
+decided_at: 2026-04-12T09:14:00Z
+decided_by: alaingm
+decision_reason: Matches the meeting notes verbatim; no changes needed.

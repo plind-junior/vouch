@@ -1,0 +1,12 @@
+# An Entity is a typed named thing. Entities are graph nodes — they
+# anchor relations and aggregate the claims that mention them.
+
+id: kebab-case-slug
+name: Human-readable name
+type: concept            # person | project | repo | company | concept | decision | workflow | file | api | incident | source | agent | tool | team | system
+aliases: []              # other names this entity is known by
+description: ""          # one paragraph max; deeper context goes in a Page
+page: ""                 # optional id of the entity's write-up page
+
+created_at: 2026-05-17T00:00:00Z
+updated_at: 2026-05-17T00:00:00Z

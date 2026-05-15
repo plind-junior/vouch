@@ -1,0 +1,21 @@
+# vouch KB configuration. Copy to .vouch/config.yaml at init time.
+
+version: "0.1"
+kb_name: my-project              # short identifier, shown in capabilities
+agent: my-agent                  # default actor when VOUCH_AGENT is unset
+
+retrieval:
+  backend: fts5                  # fts5 | substring
+  fts5_porter: true              # better stemming for English
+
+review:
+  require_citations: true        # claims without citations fail validation
+  approver_role: human           # human | trusted-agent
+  expire_pending_after_days: 90  # GC threshold for stale proposals (0 = never)
+
+# Optional per-agent identity overrides. Keyed by VOUCH_AGENT value.
+agents:
+  claude-code:
+    display_name: "Claude Code"
+  cursor:
+    display_name: "Cursor"

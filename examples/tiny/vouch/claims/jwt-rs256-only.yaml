@@ -1,0 +1,18 @@
+id: jwt-rs256-only
+text: JWTs are signed with RS256 only; HS256 is rejected at the verifier.
+type: decision
+status: stable
+confidence: 0.98
+evidence:
+  - 3e2f1b8e7a4c9f5e0b2d6c1a4f8e9d3b7c5a2e1f0d8b6c4a3e2f1b8e7a4c9f5e
+  - 9b1ac6d4f8e3b7a1c5e2d8f4a9b3c7e1d5f8a2c4b9e7d3f1a5c8b2e6d4f9a3c7
+entities:
+  - auth-component
+scope: project
+tags:
+  - auth
+  - jwt
+  - security
+created_at: 2026-04-12T09:18:00Z
+updated_at: 2026-04-12T09:18:00Z
+approved_by: alaingm

@@ -1,0 +1,14 @@
+id: 9b1ac6d4f8e3b7a1c5e2d8f4a9b3c7e1d5f8a2c4b9e7d3f1a5c8b2e6d4f9a3c7
+type: file
+locator: docs/internal/auth-rfc-12.md
+title: Internal RFC 12 — Token rotation policy
+hash: 9b1ac6d4f8e3b7a1c5e2d8f4a9b3c7e1d5f8a2c4b9e7d3f1a5c8b2e6d4f9a3c7
+immutable: true
+scope: project
+byte_size: 7821
+media_type: text/markdown
+created_at: 2026-02-19T11:30:00Z
+tags:
+  - rfc
+  - auth
+  - security

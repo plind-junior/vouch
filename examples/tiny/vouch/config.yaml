@@ -1,0 +1,9 @@
+version: "0.1"
+kb_name: example-auth-kb
+agent: example-agent
+retrieval:
+  backend: fts5
+  fts5_porter: true
+review:
+  require_citations: true
+  approver_role: human

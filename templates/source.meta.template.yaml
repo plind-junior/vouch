@@ -1,0 +1,17 @@
+# Source metadata. The directory it lives in is named with the sha256
+# of the captured content: .vouch/sources/<sha256>/meta.yaml. The
+# content itself (when captured) is in .vouch/sources/<sha256>/content.
+
+id: <sha256-hex-64-chars>
+type: file               # file | url | transcript | message | commit | issue | screenshot | pdf | audio | video | folder
+locator: "path/or/url/to/the/source"
+title: "Human-readable title"
+hash: <sha256-hex-64-chars>      # mirrors id; explicit for clarity
+immutable: true
+scope: project           # private | project | team | public
+byte_size: 0
+media_type: text/plain
+created_at: 2026-05-17T00:00:00Z
+
+metadata: {}             # arbitrary implementation-defined fields
+tags: []

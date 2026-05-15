@@ -1,0 +1,17 @@
+id: refresh-tokens-rotate
+text: Refresh tokens rotate on every use; reusing a spent refresh token revokes the session.
+type: decision
+status: stable
+confidence: 0.92
+evidence:
+  - 9b1ac6d4f8e3b7a1c5e2d8f4a9b3c7e1d5f8a2c4b9e7d3f1a5c8b2e6d4f9a3c7
+entities:
+  - auth-component
+scope: project
+tags:
+  - auth
+  - session
+  - security
+created_at: 2026-04-12T09:24:00Z
+updated_at: 2026-04-12T09:24:00Z
+approved_by: alaingm

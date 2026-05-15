@@ -1,0 +1,12 @@
+# A Relation is a typed edge between two ids. Endpoints can be
+# entities, claims, or pages — anything with an id.
+
+id: kebab-case-slug
+source: <source-id>      # the "from" endpoint
+relation: uses           # uses | depends_on | contradicts | supersedes | supports | caused_by | owned_by | derived_from | similar_to | blocks | implements | references
+target: <target-id>      # the "to" endpoint
+confidence: 0.7
+evidence: []             # source/evidence ids backing this relation
+
+created_at: 2026-05-17T00:00:00Z
+updated_at: 2026-05-17T00:00:00Z

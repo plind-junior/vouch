@@ -1,0 +1,18 @@
+id: auth-uses-jwt
+text: The service authenticates requests with signed JWTs in the Authorization header.
+type: decision
+status: stable
+confidence: 0.95
+evidence:
+  - 3e2f1b8e7a4c9f5e0b2d6c1a4f8e9d3b7c5a2e1f0d8b6c4a3e2f1b8e7a4c9f5e
+entities:
+  - service-api
+  - auth-component
+scope: project
+tags:
+  - auth
+  - jwt
+created_at: 2026-04-12T09:14:00Z
+updated_at: 2026-04-12T09:14:00Z
+last_confirmed_at: 2026-05-10T15:00:00Z
+approved_by: alaingm

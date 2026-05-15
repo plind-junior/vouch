@@ -1,0 +1,11 @@
+# A Session is an agent's work block. Created by kb.session_start and
+# closed by kb.session_end. The session bundles its proposals so that
+# kb.crystallize can later promote the durable parts.
+
+id: <session-id>          # ULID-ish; sortable by chronology
+agent: agent-name         # value of VOUCH_AGENT at start time
+task: ""                  # what the agent was working on (optional)
+started_at: 2026-05-17T00:00:00Z
+ended_at: null            # set on kb.session_end
+proposal_ids: []          # appended to as proposals are filed
+note: ""                  # human / agent notes

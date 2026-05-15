@@ -1,0 +1,26 @@
+# A Proposal is the review-gate primitive. Agents file proposals via
+# kb.propose_* — they don't write durable artifacts directly.
+#
+# While pending, this file lives in .vouch/proposed/<id>.yaml (gitignored).
+# After kb.approve or kb.reject it moves to .vouch/decided/<id>.yaml.
+
+id: <proposal-id>
+kind: claim               # claim | page | entity | relation
+proposed_by: agent-name
+session_id: ""            # optional; ties the proposal to a session
+proposed_at: 2026-05-17T00:00:00Z
+
+# `payload` carries the fields of the object that would be created on
+# approve. The exact shape depends on `kind`; see the matching
+# template file (claim.template.yaml, page.template.md, ...).
+payload:
+  text: "..."
+  type: observation
+  evidence: []
+
+rationale: ""             # why this claim/page/etc. — reviewers read this first
+
+status: pending           # pending | approved | rejected
+decided_at: null
+decided_by: ""
+decision_reason: ""

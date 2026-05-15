@@ -1,0 +1,13 @@
+{"id":"01HM3K0001","event":"source.register","actor":"example-agent","created_at":"2025-11-04T15:01:00Z","object_ids":["3e2f1b8e7a4c9f5e0b2d6c1a4f8e9d3b7c5a2e1f0d8b6c4a3e2f1b8e7a4c9f5e"],"data":{"deduplicated":false}}
+{"id":"01HM3K0002","event":"source.register","actor":"example-agent","created_at":"2026-02-19T11:31:00Z","object_ids":["9b1ac6d4f8e3b7a1c5e2d8f4a9b3c7e1d5f8a2c4b9e7d3f1a5c8b2e6d4f9a3c7"],"data":{"deduplicated":false}}
+{"id":"01HM3K0003","event":"proposal.create","actor":"example-agent","created_at":"2026-04-12T09:13:40Z","object_ids":["prop-001"],"data":{"kind":"claim"}}
+{"id":"01HM3K0004","event":"proposal.approve","actor":"alaingm","created_at":"2026-04-12T09:14:00Z","object_ids":["prop-001"],"data":{"object_id":"auth-uses-jwt"}}
+{"id":"01HM3K0005","event":"claim.create","actor":"alaingm","created_at":"2026-04-12T09:14:00Z","object_ids":["auth-uses-jwt"],"data":{"proposal_id":"prop-001"}}
+{"id":"01HM3K0006","event":"proposal.approve","actor":"alaingm","created_at":"2026-04-12T09:18:00Z","object_ids":["prop-002"],"data":{"object_id":"jwt-rs256-only"}}
+{"id":"01HM3K0007","event":"claim.create","actor":"alaingm","created_at":"2026-04-12T09:18:00Z","object_ids":["jwt-rs256-only"],"data":{"proposal_id":"prop-002"}}
+{"id":"01HM3K0008","event":"proposal.approve","actor":"alaingm","created_at":"2026-04-12T09:21:00Z","object_ids":["prop-003"],"data":{"object_id":"session-ttl-15min"}}
+{"id":"01HM3K0009","event":"claim.create","actor":"alaingm","created_at":"2026-04-12T09:21:00Z","object_ids":["session-ttl-15min"],"data":{"proposal_id":"prop-003"}}
+{"id":"01HM3K0010","event":"proposal.approve","actor":"alaingm","created_at":"2026-04-12T09:24:00Z","object_ids":["prop-004"],"data":{"object_id":"refresh-tokens-rotate"}}
+{"id":"01HM3K0011","event":"claim.create","actor":"alaingm","created_at":"2026-04-12T09:24:00Z","object_ids":["refresh-tokens-rotate"],"data":{"proposal_id":"prop-004"}}
+{"id":"01HM3K0012","event":"page.create","actor":"alaingm","created_at":"2026-04-12T09:30:00Z","object_ids":["auth-design"],"data":{}}
+{"id":"01HM3K0013","event":"claim.confirm","actor":"alaingm","created_at":"2026-05-10T15:00:00Z","object_ids":["auth-uses-jwt"],"data":{}}

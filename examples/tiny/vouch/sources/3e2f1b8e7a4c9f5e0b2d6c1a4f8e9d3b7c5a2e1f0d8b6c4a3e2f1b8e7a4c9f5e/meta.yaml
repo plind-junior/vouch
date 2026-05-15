@@ -1,0 +1,13 @@
+id: 3e2f1b8e7a4c9f5e0b2d6c1a4f8e9d3b7c5a2e1f0d8b6c4a3e2f1b8e7a4c9f5e
+type: commit
+locator: 2025-11-04-auth-decision-meeting.md
+title: Auth decision meeting notes (Nov 2025)
+hash: 3e2f1b8e7a4c9f5e0b2d6c1a4f8e9d3b7c5a2e1f0d8b6c4a3e2f1b8e7a4c9f5e
+immutable: true
+scope: project
+byte_size: 4290
+media_type: text/markdown
+created_at: 2025-11-04T15:00:00Z
+tags:
+  - meeting-notes
+  - auth
