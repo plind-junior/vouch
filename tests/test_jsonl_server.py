@@ -14,7 +14,14 @@ from vouch.storage import KBStore
 
 @pytest.fixture
 def store(tmp_path: Path) -> KBStore:
-    return KBStore.init(tmp_path)
+    kb = KBStore.init(tmp_path)
+    # Tests self-approve — enable trusted-agent mode so the
+    # forbidden_self_approval gate does not reject them.
+    import yaml
+    cfg = kb.read_config()
+    cfg.setdefault("review", {})["approver_role"] = "trusted-agent"
+    kb.config_path.write_text(yaml.safe_dump(cfg, sort_keys=False, allow_unicode=True))
+    return kb
 
 
 def test_jsonl_search_request(store: KBStore, monkeypatch) -> None:

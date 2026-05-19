@@ -218,6 +218,12 @@ def approve(
     reason: str | None = None,
 ) -> Claim | Page | Entity | Relation:
     proposal = store.get_proposal(proposal_id)
+
+    config = store.read_config()
+    if config.get("review", {}).get("approver_role") != "trusted-agent":
+        if approved_by == proposal.proposed_by:
+            raise ProposalError("forbidden_self_approval")
+
     if proposal.status != ProposalStatus.PENDING:
         raise ProposalError(
             f"proposal {proposal_id} is {proposal.status.value}, not pending"

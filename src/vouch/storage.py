@@ -124,7 +124,7 @@ class KBStore:
                 _yaml_dump(
                     {
                         "version": 1,
-                        "review": {"require_human_approval": True},
+                        "review": {},
                         "retrieval": {"backends": ["fts5", "substring"]},
                     }
                 )
@@ -140,6 +140,12 @@ class KBStore:
     @property
     def config_path(self) -> Path:
         return self.kb_dir / CONFIG_FILENAME
+
+    def read_config(self) -> dict[str, Any]:
+        """Return the parsed config.yaml contents."""
+        if self.config_path.exists():
+            return _yaml_load(self.config_path.read_text()) or {}
+        return {}
 
     def _yaml(self, sub: str, obj_id: str) -> Path:
         return self.kb_dir / sub / f"{obj_id}.yaml"
