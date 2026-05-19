@@ -142,4 +142,4 @@ def test_import_apply_skips_invalid_content(
         tar.addfile(info, io.BytesIO(mf))
 
     result = bundle.import_apply(store.kb_dir, bundle_path)
-    assert "bad.yaml" not in result["written"]
+    assert not any(Path(p).name == "bad.yaml" for p in result["written"])
