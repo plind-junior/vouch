@@ -62,3 +62,84 @@ def test_import_apply_fails_when_requested(store: KBStore, tmp_path: Path) -> No
     store.update_claim(c)
     with pytest.raises(RuntimeError, match="conflicts"):
         bundle.import_apply(store.kb_dir, bundle_path, on_conflict="fail")
+
+
+def test_import_check_rejects_invalid_claim_content(
+    store: KBStore, tmp_path: Path,
+) -> None:
+    import io
+    import json
+    import tarfile
+    from vouch.storage import sha256_hex
+
+    bad_body = b"confidence: 999\ntext: null\n"
+    manifest = {
+        "spec": "vouch-bundle-0.1",
+        "bundle_id": "abc",
+        "files": [
+            {
+                "path": "claims/bad.yaml",
+                "size": len(bad_body),
+                "sha256": sha256_hex(bad_body),
+            },
+        ],
+        "counts": {"claims": 1},
+        "safety": {
+            "has_proposed": False,
+            "has_state_db": False,
+            "has_audit_log": False,
+        },
+    }
+    bundle_path = tmp_path / "evil.tar.gz"
+    with tarfile.open(bundle_path, "w:gz") as tar:
+        info = tarfile.TarInfo("claims/bad.yaml")
+        info.size = len(bad_body)
+        tar.addfile(info, io.BytesIO(bad_body))
+        mf = json.dumps(manifest).encode()
+        info = tarfile.TarInfo("manifest.json")
+        info.size = len(mf)
+        tar.addfile(info, io.BytesIO(mf))
+
+    chk = bundle.import_check(store.kb_dir, bundle_path)
+    assert not chk.ok
+    assert any("schema validation failed" in i for i in chk.issues)
+
+
+def test_import_apply_skips_invalid_content(
+    store: KBStore, tmp_path: Path,
+) -> None:
+    import io
+    import json
+    import tarfile
+    from vouch.storage import sha256_hex
+
+    bad_body = b"confidence: 999\ntext: null\n"
+    manifest = {
+        "spec": "vouch-bundle-0.1",
+        "bundle_id": "abc",
+        "files": [
+            {
+                "path": "claims/bad.yaml",
+                "size": len(bad_body),
+                "sha256": sha256_hex(bad_body),
+            },
+        ],
+        "counts": {"claims": 1},
+        "safety": {
+            "has_proposed": False,
+            "has_state_db": False,
+            "has_audit_log": False,
+        },
+    }
+    bundle_path = tmp_path / "evil.tar.gz"
+    with tarfile.open(bundle_path, "w:gz") as tar:
+        info = tarfile.TarInfo("claims/bad.yaml")
+        info.size = len(bad_body)
+        tar.addfile(info, io.BytesIO(bad_body))
+        mf = json.dumps(manifest).encode()
+        info = tarfile.TarInfo("manifest.json")
+        info.size = len(mf)
+        tar.addfile(info, io.BytesIO(mf))
+
+    result = bundle.import_apply(store.kb_dir, bundle_path)
+    assert "bad.yaml" not in result["written"]
