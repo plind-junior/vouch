@@ -28,9 +28,8 @@ from typing import Any
 import yaml
 
 from . import audit
-from .models import Claim, Entity, Evidence, Page, Proposal, Relation, Session, Source
-from .storage import sha256_hex
-from .storage import _deserialize_page
+from .models import Claim, Entity, Evidence, Proposal, Relation, Session, Source
+from .storage import _deserialize_page, sha256_hex
 
 MANIFEST_NAME = "manifest.json"
 SPEC_VERSION = "vouch-bundle-0.1"
@@ -43,6 +42,7 @@ EXPORT_SUBDIRS = (
 VALIDATORS: dict[str, Any] = {
     "claims": lambda data: Claim.model_validate(yaml.safe_load(data)),
     "pages": lambda data: _deserialize_page(data.decode()),
+    "sources": lambda data: Source.model_validate(yaml.safe_load(data)),
     "entities": lambda data: Entity.model_validate(yaml.safe_load(data)),
     "relations": lambda data: Relation.model_validate(yaml.safe_load(data)),
     "evidence": lambda data: Evidence.model_validate(yaml.safe_load(data)),
@@ -203,6 +203,7 @@ def import_check(kb_dir: Path, bundle_path: Path) -> ImportCheckResult:
             )
         manifest = json.loads(tar.extractfile(mf_member).read().decode())  # type: ignore[union-attr]
         bundle_id = manifest.get("bundle_id", "")
+        manifest_paths = {f["path"] for f in manifest["files"]}
         for f in manifest["files"]:
             dest = kb_dir / f["path"]
             if not dest.exists():
@@ -214,7 +215,7 @@ def import_check(kb_dir: Path, bundle_path: Path) -> ImportCheckResult:
         for member in tar.getmembers():
             if member.name == MANIFEST_NAME or not member.isfile():
                 continue
-            if member.name not in {f["path"] for f in manifest["files"]}:
+            if member.name not in manifest_paths:
                 continue
             body = tar.extractfile(member).read()  # type: ignore[union-attr]
             _validate_content(member.name, body, issues)
