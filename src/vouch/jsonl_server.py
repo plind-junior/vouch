@@ -77,8 +77,11 @@ def _h_search(p: dict) -> list[dict]:
     q = p["query"]
     limit = int(p.get("limit", 10))
     try:
-        hits = index_db.search(s.kb_dir, q, limit=limit) or s.search_substring(q, limit=limit)
-        backend = "fts5" if hits and hits is not None else "substring"
+        hits = index_db.search(s.kb_dir, q, limit=limit)
+        backend = "fts5"
+        if not hits:
+            hits = s.search_substring(q, limit=limit)
+            backend = "substring"
     except Exception:
         hits = s.search_substring(q, limit=limit)
         backend = "substring"
