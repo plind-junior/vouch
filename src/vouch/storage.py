@@ -234,6 +234,7 @@ class KBStore:
     # --- claims ------------------------------------------------------------
 
     def put_claim(self, claim: Claim) -> Claim:
+        # Evidence entries can be Source IDs or Evidence IDs -- accept either.
         for cid_or_sid in claim.evidence:
             if (self._source_dir(cid_or_sid) / "meta.yaml").exists():
                 continue
@@ -247,7 +248,7 @@ class KBStore:
                 f.write(_yaml_dump(claim.model_dump(mode="json")))
         except FileExistsError:
             raise ValueError(
-                f"claim {claim.id} already exists — use update_claim()"
+                f"claim {claim.id} already exists -- use update_claim()"
             )
         return claim
 
@@ -283,7 +284,7 @@ class KBStore:
                 f.write(_serialize_page(page))
         except FileExistsError:
             raise ValueError(
-                f"page {page.id} already exists — choose a different slug"
+                f"page {page.id} already exists -- choose a different slug"
             )
         return page
 
@@ -307,7 +308,7 @@ class KBStore:
                 f.write(_yaml_dump(entity.model_dump(mode="json")))
         except FileExistsError:
             raise ValueError(
-                f"entity {entity.id} already exists — choose a different slug"
+                f"entity {entity.id} already exists -- choose a different slug"
             )
         return entity
 
@@ -332,7 +333,7 @@ class KBStore:
                 f.write(_yaml_dump(rel.model_dump(mode="json")))
         except FileExistsError:
             raise ValueError(
-                f"relation {rel.id} already exists — choose a different slug"
+                f"relation {rel.id} already exists -- choose a different slug"
             )
         return rel
 
@@ -358,10 +359,15 @@ class KBStore:
     # --- evidence ----------------------------------------------------------
 
     def put_evidence(self, ev: Evidence) -> Evidence:
-        # Evidence must point to a registered source.
         if not (self._source_dir(ev.source_id) / "meta.yaml").exists():
             raise ValueError(f"evidence {ev.id} cites unknown source {ev.source_id}")
-        self._evidence_path(ev.id).write_text(_yaml_dump(ev.model_dump(mode="json")))
+        try:
+            with self._evidence_path(ev.id).open("x") as f:
+                f.write(_yaml_dump(ev.model_dump(mode="json")))
+        except FileExistsError:
+            raise ValueError(
+                f"evidence {ev.id} already exists -- choose a different slug"
+            )
         return ev
 
     def get_evidence(self, eid: str) -> Evidence:
@@ -380,7 +386,13 @@ class KBStore:
     # --- sessions ----------------------------------------------------------
 
     def put_session(self, sess: Session) -> Session:
-        self._session_path(sess.id).write_text(_yaml_dump(sess.model_dump(mode="json")))
+        try:
+            with self._session_path(sess.id).open("x") as f:
+                f.write(_yaml_dump(sess.model_dump(mode="json")))
+        except FileExistsError:
+            raise ValueError(
+                f"session {sess.id} already exists -- choose a different id"
+            )
         return sess
 
     def get_session(self, sid: str) -> Session:
@@ -399,9 +411,13 @@ class KBStore:
     # --- proposals ---------------------------------------------------------
 
     def put_proposal(self, proposal: Proposal) -> Proposal:
-        self._proposal_path(proposal.id).write_text(
-            _yaml_dump(proposal.model_dump(mode="json"))
-        )
+        try:
+            with self._proposal_path(proposal.id).open("x") as f:
+                f.write(_yaml_dump(proposal.model_dump(mode="json")))
+        except FileExistsError:
+            raise ValueError(
+                f"proposal {proposal.id} already exists -- choose a different id"
+            )
         return proposal
 
     def get_proposal(self, proposal_id: str) -> Proposal:
