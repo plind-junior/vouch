@@ -125,10 +125,20 @@ def export_check(bundle_path: Path) -> ExportCheckResult:
         manifest = json.loads(tar.extractfile(mf_member).read().decode())  # type: ignore[union-attr]
         bundle_id = manifest.get("bundle_id", "")
         recorded = {f["path"]: f for f in manifest["files"]}
+        for path in recorded:
+            if path.startswith("/") or ".." in Path(path).parts or "\x00" in path:
+                issues.append(f"unsafe path in manifest: {path!r}")
         for member in tar.getmembers():
             if member.name == MANIFEST_NAME:
                 continue
             if not member.isfile():
+                continue
+            if (
+                member.name.startswith("/")
+                or ".." in Path(member.name).parts
+                or "\x00" in member.name
+            ):
+                issues.append(f"unsafe path in bundle: {member.name!r}")
                 continue
             files_checked += 1
             rec = recorded.get(member.name)
@@ -151,6 +161,18 @@ def export_check(bundle_path: Path) -> ExportCheckResult:
 
 
 # --- import ---------------------------------------------------------------
+
+
+def _safe_member_path(kb_dir: Path, member_name: str) -> Path:
+    if not member_name or member_name.startswith("/") or "\x00" in member_name:
+        raise RuntimeError(f"unsafe path in bundle: {member_name!r}")
+    kb_root = kb_dir.resolve()
+    dest = (kb_root / member_name).resolve()
+    try:
+        dest.relative_to(kb_root)
+    except ValueError as exc:
+        raise RuntimeError(f"path traversal in bundle: {member_name!r}") from exc
+    return dest
 
 
 @dataclass
@@ -181,7 +203,11 @@ def import_check(kb_dir: Path, bundle_path: Path) -> ImportCheckResult:
         manifest = json.loads(tar.extractfile(mf_member).read().decode())  # type: ignore[union-attr]
         bundle_id = manifest.get("bundle_id", "")
         for f in manifest["files"]:
-            dest = kb_dir / f["path"]
+            try:
+                dest = _safe_member_path(kb_dir, f["path"])
+            except RuntimeError as exc:
+                issues.append(str(exc))
+                continue
             if not dest.exists():
                 new_files.append(f["path"])
                 continue
@@ -191,7 +217,7 @@ def import_check(kb_dir: Path, bundle_path: Path) -> ImportCheckResult:
                 conflicts.append(f["path"])
 
     return ImportCheckResult(
-        ok=True, bundle_id=bundle_id,
+        ok=not issues, bundle_id=bundle_id,
         new_files=new_files, conflicts=conflicts,
         identical=identical, issues=issues,
     )
@@ -212,6 +238,8 @@ def import_apply(
     if on_conflict not in {"skip", "overwrite", "fail"}:
         raise ValueError(f"on_conflict must be skip|overwrite|fail, got {on_conflict}")
     check = import_check(kb_dir, bundle_path)
+    if check.issues:
+        raise RuntimeError(f"refusing to import: {check.issues[0]}")
     if on_conflict == "fail" and check.conflicts:
         raise RuntimeError(f"refusing to import: {len(check.conflicts)} conflicts")
     written: list[str] = []
@@ -226,7 +254,7 @@ def import_apply(
                 continue
             if member.name not in recorded:
                 continue
-            dest = kb_dir / member.name
+            dest = _safe_member_path(kb_dir, member.name)
             if (
                 dest.exists()
                 and on_conflict == "skip"
