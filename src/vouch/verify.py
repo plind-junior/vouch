@@ -13,7 +13,7 @@ from pathlib import Path
 
 from . import audit
 from .models import Source
-from .storage import KBStore, sha256_hex
+from .storage import ArtifactNotFoundError, KBStore, sha256_hex
 
 
 @dataclass
@@ -27,9 +27,16 @@ class VerificationResult:
 def verify_source(store: KBStore, source: Source) -> VerificationResult:
     try:
         body = store.read_source_content(source.id)
-    except FileNotFoundError:
+    except ArtifactNotFoundError:
         return VerificationResult(source=source, stored_ok=False,
                                   external_status="n/a", note="stored content missing")
+    except OSError as e:
+        # Permission denied, TOCTOU race between exists() and read_bytes(),
+        # I/O error on the underlying filesystem — any of these should surface
+        # as a graceful per-source failure rather than aborting verify_all().
+        return VerificationResult(source=source, stored_ok=False,
+                                  external_status="n/a",
+                                  note=f"stored content unreadable: {e}")
     stored_ok = sha256_hex(body) == source.id
 
     external_status = "n/a"
