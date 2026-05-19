@@ -6,6 +6,14 @@ All notable changes to vouch are documented here. Format follows
 
 ## [Unreleased]
 
+### Added
+- `KBStore.read_config()` method to parse `.vouch/config.yaml`.
+- `forbidden_self_approval` gate in `approve()`: prevents self-approval
+  unless `review.approver_role` is set to `trusted-agent` in config.
+
+### Changed
+- Default `config.yaml` no longer writes unused `require_human_approval` flag.
+
 ## [0.0.1] — 2026-05-17
 
 Initial alpha. Surface intentionally small; expect breaking changes pre-1.0.

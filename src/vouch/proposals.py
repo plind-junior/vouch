@@ -220,9 +220,11 @@ def approve(
     proposal = store.get_proposal(proposal_id)
 
     config = store.read_config()
-    if config.get("review", {}).get("approver_role") != "trusted-agent":
-        if approved_by == proposal.proposed_by:
-            raise ProposalError("forbidden_self_approval")
+    if (
+        config.get("review", {}).get("approver_role") != "trusted-agent"
+        and approved_by == proposal.proposed_by
+    ):
+        raise ProposalError("forbidden_self_approval")
 
     if proposal.status != ProposalStatus.PENDING:
         raise ProposalError(
