@@ -28,6 +28,16 @@ from typing import Any
 import yaml
 
 from . import audit
+from .models import (
+    Claim,
+    Entity,
+    Evidence,
+    Page,
+    Proposal,
+    Relation,
+    Session,
+    Source,
+)
 from .storage import sha256_hex
 
 MANIFEST_NAME = "manifest.json"
@@ -37,6 +47,47 @@ EXPORT_SUBDIRS = (
     "claims", "pages", "sources", "entities", "relations",
     "evidence", "sessions", "decided",
 )
+
+_VALIDATORS: dict[str, Any] = {}
+
+
+def _init_validators():
+    if _VALIDATORS:
+        return
+    _VALIDATORS.update({
+        "claims": lambda data: Claim.model_validate(yaml.safe_load(data)),
+        "pages": lambda data: _deserialize_page(data.decode()),
+        "entities": lambda data: Entity.model_validate(yaml.safe_load(data)),
+        "relations": lambda data: Relation.model_validate(yaml.safe_load(data)),
+        "evidence": lambda data: Evidence.model_validate(yaml.safe_load(data)),
+        "sessions": lambda data: Session.model_validate(yaml.safe_load(data)),
+        "decided": lambda data: Proposal.model_validate(yaml.safe_load(data)),
+    })
+
+
+def _deserialize_page(data: str) -> Page:
+    parts = data.split("\n---\n", 1)
+    if len(parts) == 2:
+        meta = yaml.safe_load(parts[0]) or {}
+        body = parts[1].strip()
+    else:
+        meta = yaml.safe_load(data) or {}
+        body = ""
+    return Page(**{**meta, "body": body})
+
+
+def _validate_bundle_content(
+    member_name: str, body: bytes,
+) -> str | None:
+    subdir = member_name.split("/")[0]
+    validator = _VALIDATORS.get(subdir)
+    if validator is None:
+        return None
+    try:
+        validator(body)
+    except Exception as exc:
+        return f"schema validation failed: {member_name}: {exc}"
+    return None
 
 
 # --- export ---------------------------------------------------------------
@@ -165,6 +216,7 @@ class ImportCheckResult:
 
 def import_check(kb_dir: Path, bundle_path: Path) -> ImportCheckResult:
     """Diff a bundle against the destination KB without writing anything."""
+    _init_validators()
     new_files: list[str] = []
     conflicts: list[str] = []
     identical: list[str] = []
@@ -189,9 +241,19 @@ def import_check(kb_dir: Path, bundle_path: Path) -> ImportCheckResult:
                 identical.append(f["path"])
             else:
                 conflicts.append(f["path"])
+        recorded_map = {f["path"]: f for f in manifest["files"]}
+        for member in tar.getmembers():
+            if member.name == MANIFEST_NAME or not member.isfile():
+                continue
+            if member.name not in recorded_map:
+                continue
+            body = tar.extractfile(member).read()  # type: ignore[union-attr]
+            err = _validate_bundle_content(member.name, body)
+            if err is not None:
+                issues.append(err)
 
     return ImportCheckResult(
-        ok=True, bundle_id=bundle_id,
+        ok=not issues, bundle_id=bundle_id,
         new_files=new_files, conflicts=conflicts,
         identical=identical, issues=issues,
     )
@@ -209,6 +271,7 @@ def import_apply(
     The default is `skip` so an import is never destructive without an
     explicit choice.
     """
+    _init_validators()
     if on_conflict not in {"skip", "overwrite", "fail"}:
         raise ValueError(f"on_conflict must be skip|overwrite|fail, got {on_conflict}")
     check = import_check(kb_dir, bundle_path)
@@ -235,8 +298,13 @@ def import_apply(
             ):
                 skipped.append(member.name)
                 continue
+            body = tar.extractfile(member).read()  # type: ignore[union-attr]
+            err = _validate_bundle_content(member.name, body)
+            if err is not None:
+                skipped.append(member.name)
+                continue
             dest.parent.mkdir(parents=True, exist_ok=True)
-            dest.write_bytes(tar.extractfile(member).read())  # type: ignore[union-attr]
+            dest.write_bytes(body)
             written.append(member.name)
     result = {
         "bundle_id": check.bundle_id,
