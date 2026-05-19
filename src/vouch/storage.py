@@ -144,7 +144,9 @@ class KBStore:
     def read_config(self) -> dict[str, Any]:
         """Return the parsed config.yaml contents."""
         if self.config_path.exists():
-            return _yaml_load(self.config_path.read_text()) or {}
+            raw = _yaml_load(self.config_path.read_text())
+            if isinstance(raw, dict):
+                return raw
         return {}
 
     def _yaml(self, sub: str, obj_id: str) -> Path:

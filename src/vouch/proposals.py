@@ -220,9 +220,10 @@ def approve(
     proposal = store.get_proposal(proposal_id)
 
     config = store.read_config()
+    review_cfg = config.get("review")
     if (
-        config.get("review", {}).get("approver_role") != "trusted-agent"
-        and approved_by == proposal.proposed_by
+        approved_by == proposal.proposed_by
+        and (not isinstance(review_cfg, dict) or review_cfg.get("approver_role") != "trusted-agent")
     ):
         raise ProposalError("forbidden_self_approval")
 
