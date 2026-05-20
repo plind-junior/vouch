@@ -464,40 +464,78 @@ def crystallize(session_id: str, no_page: bool) -> None:
 
 @cli.command()
 @click.argument("query")
-@click.option("--limit", default=10, show_default=True, type=int)
-@click.option("--embedding", "use_embedding", is_flag=True,
-              help="Use embedding-based semantic search")
-def search(query: str, limit: int, use_embedding: bool) -> None:
-    """Search claims, pages, and entities (embedding → fts5 → substring)."""
+@click.option("--limit", "-n", default=10, show_default=True, type=int)
+@click.option("--top-k", default=None, type=int, help="Alias for --limit.")
+@click.option("--semantic/--no-semantic", default=None,
+              help="Force semantic backend (alias for --backend embedding).")
+@click.option(
+    "--backend",
+    type=click.Choice(["auto", "embedding", "fts5", "substring", "hybrid"]),
+    default="auto", show_default=True,
+)
+@click.option("--min-score", default=0.0, show_default=True, type=float)
+@click.option("--rerank/--no-rerank", default=False)
+@click.option("--hyde/--no-hyde", default=False)
+@click.option("--explain/--no-explain", default=False)
+def search(
+    query: str,
+    limit: int,
+    top_k: int | None,
+    semantic: bool | None,
+    backend: str,
+    min_score: float,
+    rerank: bool,
+    hyde: bool,
+    explain: bool,
+) -> None:
+    """Search the KB."""
     from . import index_db
+    from .embeddings.fusion import rrf_fuse
     store = _load_store()
-
-    if use_embedding:
-        try:
-            from .embeddings import get_embedder
-            embedder = get_embedder()
-        except Exception:
-            click.echo("Error: sentence-transformers not installed. "
-                       "pip install vouch[embeddings]", err=True)
-            raise SystemExit(1) from None
-        vec = embedder.encode(query).tolist()
-        hits = index_db.search_embedding(store.kb_dir, query_vec=vec, limit=limit)
+    if top_k is not None:
+        limit = top_k
+    if semantic is True:
         backend = "embedding"
-    else:
-        try:
-            hits = index_db.search(store.kb_dir, query, limit=limit)
-            if not hits:
-                hits = store.search_substring(query, limit=limit)
-                backend = "substring"
-            else:
-                backend = "fts5"
-        except Exception:
-            hits = store.search_substring(query, limit=limit)
-            backend = "substring"
+    elif semantic is False:
+        backend = "fts5"
+    q = query
+    if hyde:
+        from .embeddings.hyde import expand_query_template
+        q = expand_query_template(query)
 
-    for kind, hid, snippet, score in hits:
-        click.echo(f"[{kind}] {hid}  score={score:.3f}  ({backend})")
-        click.echo(f"    {snippet[:200]}")
+    hits: list[tuple[str, str, str, float]] = []
+    used = backend
+    if backend in ("auto", "embedding"):
+        hits = index_db.search_semantic(
+            store.kb_dir, q, limit=limit, min_score=min_score,
+        )
+        used = "embedding" if hits else used
+    if not hits and backend in ("auto", "fts5"):
+        hits = index_db.search(store.kb_dir, q, limit=limit)
+        used = "fts5" if hits else used
+    if not hits and backend in ("auto", "substring"):
+        hits = store.search_substring(q, limit=limit)
+        used = "substring"
+    if backend == "hybrid":
+        emb = index_db.search_semantic(store.kb_dir, q, limit=limit * 2)
+        fts = index_db.search(store.kb_dir, q, limit=limit * 2)
+        hits = rrf_fuse(emb, fts, limit=limit)
+        used = "hybrid"
+
+    if rerank and hits:
+        try:
+            from .embeddings.rerank import default_reranker, rerank as do_rerank
+            hits = do_rerank(query=query, hits=hits, reranker=default_reranker(),
+                             top_k=limit)
+        except ImportError:
+            click.echo("warning: rerank extras not installed; skipping rerank",
+                       err=True)
+
+    for k, i, snip, score in hits:
+        if explain:
+            click.echo(f"[{used}] {k}/{i}\tscore={score:.4f}\t{snip}")
+        else:
+            click.echo(f"{k}/{i}\t{snip}")
 
 
 @cli.command()
