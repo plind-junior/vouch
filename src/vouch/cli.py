@@ -29,13 +29,13 @@ from .lifecycle import LifecycleError
 from .models import ProposalStatus
 from .proposals import (
     ProposalError,
-    approve as do_approve,
-)
-from .proposals import (
     propose_claim,
     propose_entity,
     propose_page,
     propose_relation,
+)
+from .proposals import (
+    approve as do_approve,
 )
 from .proposals import (
     reject as do_reject,
