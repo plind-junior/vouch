@@ -174,14 +174,12 @@ def _h_register_source(p: dict) -> dict:
 
 def _h_register_source_from_path(p: dict) -> dict:
     s = _store()
-    path = Path(p["path"])
-    if not path.is_file():
-        raise ValueError(f"not a file: {path}")
+    path, body = s.read_under_root(p["path"])
     src = s.put_source(
-        path.read_bytes(),
+        body,
         title=p.get("title") or path.name,
         url=p.get("url"),
-        locator=str(path.resolve()),
+        locator=str(path),
         source_type=p.get("source_type", "file"),
     )
     audit.log_event(s.kb_dir, event="source.add", actor=_agent(), object_ids=[src.id])
