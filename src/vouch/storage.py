@@ -24,7 +24,9 @@ that `vouch index` can rebuild from disk.
 from __future__ import annotations
 
 import hashlib
+import os
 import re
+import stat
 from pathlib import Path
 from typing import Any
 
@@ -111,17 +113,36 @@ class KBStore:
         self.root = root.resolve()
         self.kb_dir = self.root / KB_DIRNAME
 
-    def resolve_under_root(self, path: str | Path) -> Path:
+    def read_under_root(self, path: str | Path) -> tuple[Path, bytes]:
         # Guard against arbitrary-file-read primitives exposed by the MCP /
-        # JSONL `register_source_from_path` entrypoints. Symlinks are followed
-        # before the containment check so a symlink inside the project that
-        # points outside is rejected.
+        # JSONL `register_source_from_path` entrypoints, and against a TOCTOU
+        # race between the containment check and the read: an attacker who
+        # can swap the resolved name for a symlink after Path.resolve() has
+        # validated it could otherwise still exfiltrate an out-of-root file.
+        #
+        # Path.resolve() chases any pre-existing symlinks first (so legitimate
+        # in-root symlinks still work, then their target is the thing checked
+        # for containment). O_NOFOLLOW on the open then rejects a fresh
+        # symlink swapped into the resolved name after the containment check.
+        # fstat + S_ISREG rejects directories / special files atomically.
         resolved = Path(path).resolve()
         if not resolved.is_relative_to(self.root):
             raise ValueError(
                 f"path must be inside project root ({self.root}): {resolved}"
             )
-        return resolved
+        try:
+            fd = os.open(resolved, os.O_RDONLY | os.O_NOFOLLOW)
+        except OSError as e:
+            raise ValueError(f"cannot read {resolved}: {e}") from e
+        try:
+            if not stat.S_ISREG(os.fstat(fd).st_mode):
+                os.close(fd)
+                raise ValueError(f"not a regular file: {resolved}")
+        except OSError:
+            os.close(fd)
+            raise
+        with os.fdopen(fd, "rb") as f:
+            return resolved, f.read()
 
     # --- bootstrap ---------------------------------------------------------
 
