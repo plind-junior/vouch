@@ -6,7 +6,6 @@ from pathlib import Path
 
 import pytest
 
-from tests.embeddings._fakes import MockEmbedder
 from vouch import context, health
 from vouch.embeddings import register
 from vouch.embeddings.base import DEFAULT_MODEL_NAME
@@ -16,6 +15,11 @@ from vouch.storage import KBStore
 
 @pytest.fixture(autouse=True)
 def _mock_embedder() -> None:
+    # MockEmbedder requires numpy. Skip the dependent tests cleanly when
+    # CI's base [dev] install doesn't include the optional [embeddings]
+    # extras, rather than failing at module-import collection time.
+    pytest.importorskip("numpy")
+    from tests.embeddings._fakes import MockEmbedder
     register(DEFAULT_MODEL_NAME, lambda: MockEmbedder(dim=8))
 
 
