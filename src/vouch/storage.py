@@ -499,7 +499,11 @@ class KBStore:
             version=embedder.version, dim=embedder.dim,
         )
         try:
-            from .embeddings.dedup import check_and_log
+            # NB: dedup module is added in a later phase; ignore missing-stub
+            # / missing-module noise in CI's [dev]-only mypy run.
+            from .embeddings.dedup import (  # type: ignore[import-not-found,import-untyped,unused-ignore]
+                check_and_log,
+            )
             check_and_log(self.kb_dir, kind=kind, id=id, vec=vec)
         except ImportError:
             pass
