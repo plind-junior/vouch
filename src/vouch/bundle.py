@@ -267,7 +267,11 @@ def import_apply(
                 continue
             dest.parent.mkdir(parents=True, exist_ok=True)
             body = tar.extractfile(member).read()  # type: ignore[union-attr]
-            _validate_content(member.name, body, [])
+            val_issues: list[str] = []
+            _validate_content(member.name, body, val_issues)
+            if val_issues:
+                skipped.append(member.name)
+                continue
             dest.write_bytes(body)
             written.append(member.name)
     result = {
