@@ -48,6 +48,20 @@ def test_search_top_k_flag(kb: Path) -> None:
     assert result.exit_code == 0
 
 
+def test_eval_embedding_outputs_metrics(kb: Path, tmp_path: Path) -> None:
+    import json as _json
+    qfile = tmp_path / "queries.jsonl"
+    qfile.write_text(_json.dumps({"query": "some text", "relevant": ["claim:c1"]}) + "\n")
+    runner = CliRunner()
+    result = runner.invoke(cli, [
+        "eval", "embedding",
+        "--queries", str(qfile),
+        "--metric", "recall@10,mrr,ndcg",
+    ])
+    assert result.exit_code == 0
+    assert "recall" in result.output.lower() or "mrr" in result.output.lower()
+
+
 def test_dedup_scan_lists_duplicates(kb: Path) -> None:
     runner = CliRunner()
     result = runner.invoke(cli, ["dedup", "--threshold", "0.5", "--dry-run"])

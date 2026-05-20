@@ -581,6 +581,40 @@ def dedup(threshold: float, dry_run: bool) -> None:
         )
 
 
+@cli.group(name="eval")
+def eval_group() -> None:
+    """Evaluation harnesses."""
+
+
+@eval_group.command("embedding")
+@click.option("--queries", required=True, type=click.Path(exists=True))
+@click.option("--metric", default="recall@10,mrr,ndcg")
+def eval_embedding(queries: str, metric: str) -> None:
+    """Run retrieval-quality metrics over a JSONL query set."""
+    from pathlib import Path as _Path
+    from .embeddings.scorer import evaluate
+    store = _load_store()
+    metrics = tuple(m.strip() for m in metric.split(","))
+    canonical = tuple(
+        "recall@k" if m.startswith("recall@") else m for m in metrics
+    )
+    k = 10
+    for m in metrics:
+        if m.startswith("recall@"):
+            try:
+                k = int(m.split("@", 1)[1])
+            except ValueError:
+                pass
+    out = evaluate(
+        kb_dir=store.kb_dir,
+        queries_file=_Path(queries),
+        k=k,
+        metrics=canonical,
+    )
+    for m_name, v in out.items():
+        click.echo(f"{m_name}\t{v:.4f}")
+
+
 @cli.command()
 @click.option("--embeddings/--no-embeddings", default=False,
               help="Rebuild the embedding index in addition to FTS5.")
