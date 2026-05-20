@@ -27,6 +27,11 @@ try:
 except ImportError:
     pass
 
+try:
+    from . import fastembed_bge  # noqa: F401
+except ImportError:
+    pass
+
 __all__ = [
     "DEFAULT_MODEL_NAME",
     "Embedder",

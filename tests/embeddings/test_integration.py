@@ -41,3 +41,13 @@ def test_st_minilm_loads_and_encodes() -> None:
     vec = e.encode("hello world")
     assert vec.shape == (384,)
     assert vec.dtype == np.float32
+
+
+@pytest.mark.integration
+def test_fastembed_bge_loads_and_encodes() -> None:
+    pytest.importorskip("fastembed")
+    from vouch.embeddings.fastembed_bge import FastembedBgeEmbedder
+    e = FastembedBgeEmbedder()
+    vec = e.encode("hello world")
+    assert vec.shape == (384,)
+    assert vec.dtype == np.float32
