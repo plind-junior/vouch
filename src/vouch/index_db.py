@@ -244,3 +244,36 @@ def get_embedding_meta(kb_dir: Path) -> dict[str, str]:
             "SELECT key, value FROM index_meta WHERE key LIKE 'embedding_%'"
         ).fetchall()
     return {k: v for k, v in rows}
+
+
+def search_embedding(
+    kb_dir: Path,
+    *,
+    query_vec,  # type: ignore[no-untyped-def]
+    kinds: tuple[str, ...] = (
+        "claim", "page", "source", "entity", "relation", "evidence",
+    ),
+    limit: int = 10,
+    min_score: float = 0.0,
+) -> list[tuple[str, str, str, float]]:
+    """NumPy brute-force cosine search. Returns (kind, id, snippet, score)."""
+    import numpy as np
+    q = np.asarray(query_vec, dtype=np.float32)
+    qnorm = float(np.linalg.norm(q))
+    if qnorm > 0:
+        q = q / qnorm
+    placeholders = ",".join("?" for _ in kinds)
+    with open_db(kb_dir) as conn:
+        rows = conn.execute(
+            f"SELECT kind, id, vec, dim FROM embedding_index "
+            f"WHERE kind IN ({placeholders})",
+            kinds,
+        ).fetchall()
+    scored: list[tuple[str, str, str, float]] = []
+    for kind, id_, blob, dim in rows:
+        vec = _blob_to_vec(blob, dim)
+        score = float(q @ vec)
+        if score >= min_score:
+            scored.append((kind, id_, "", score))
+    scored.sort(key=lambda r: r[3], reverse=True)
+    return scored[:limit]

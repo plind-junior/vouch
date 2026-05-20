@@ -77,3 +77,45 @@ def test_set_embedding_meta_round_trip(kb_dir: Path) -> None:
     meta = index_db.get_embedding_meta(kb_dir)
     assert meta["embedding_model"] == "sentence-transformers/all-mpnet-base-v2"
     assert meta["embedding_dim"] == "768"
+
+
+def test_search_embedding_returns_topk(kb_dir: Path) -> None:
+    from vouch.embeddings.base import content_hash as ch
+
+    query = np.zeros(8, dtype=np.float32); query[0] = 1.0
+    near = np.zeros(8, dtype=np.float32); near[0] = 0.99; near[1] = 0.05
+    far  = np.zeros(8, dtype=np.float32); far[7] = 1.0
+    near /= float(np.linalg.norm(near))
+    with index_db.open_db(kb_dir) as conn:
+        for cid, vec in [("c-near", near), ("c-far", far)]:
+            index_db.put_embedding(
+                conn, kind="claim", id=cid, vec=vec,
+                content_hash=ch(cid), model="mock", model_version="1", dim=8,
+            )
+    hits = index_db.search_embedding(
+        kb_dir, query_vec=query, kinds=("claim",), limit=2,
+    )
+    assert hits[0][1] == "c-near"
+    assert hits[1][1] == "c-far"
+
+
+def test_search_embedding_empty_db(kb_dir: Path) -> None:
+    q = np.zeros(8, dtype=np.float32); q[0] = 1.0
+    hits = index_db.search_embedding(kb_dir, query_vec=q, kinds=("claim",), limit=5)
+    assert hits == []
+
+
+def test_search_embedding_filters_by_kind(kb_dir: Path) -> None:
+    from vouch.embeddings.base import content_hash as ch
+    v = np.zeros(4, dtype=np.float32); v[0] = 1.0
+    with index_db.open_db(kb_dir) as conn:
+        index_db.put_embedding(conn, kind="claim", id="c1", vec=v,
+                               content_hash=ch("c1"), model="mock",
+                               model_version="1", dim=4)
+        index_db.put_embedding(conn, kind="page", id="p1", vec=v,
+                               content_hash=ch("p1"), model="mock",
+                               model_version="1", dim=4)
+    only_claims = index_db.search_embedding(
+        kb_dir, query_vec=v, kinds=("claim",), limit=10,
+    )
+    assert {h[0] for h in only_claims} == {"claim"}
