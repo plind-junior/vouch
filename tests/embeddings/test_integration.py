@@ -32,3 +32,12 @@ def test_st_mpnet_semantic_disjoint() -> None:
     sim_a = float(q @ a)
     sim_b = float(q @ b)
     assert sim_a > sim_b
+
+
+@pytest.mark.integration
+def test_st_minilm_loads_and_encodes() -> None:
+    from vouch.embeddings.st_minilm import STMinilmEmbedder
+    e = STMinilmEmbedder()
+    vec = e.encode("hello world")
+    assert vec.shape == (384,)
+    assert vec.dtype == np.float32

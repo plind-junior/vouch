@@ -22,6 +22,11 @@ try:
 except ImportError:
     pass
 
+try:
+    from . import st_minilm  # noqa: F401
+except ImportError:
+    pass
+
 __all__ = [
     "DEFAULT_MODEL_NAME",
     "Embedder",
