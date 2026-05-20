@@ -48,6 +48,13 @@ def test_search_top_k_flag(kb: Path) -> None:
     assert result.exit_code == 0
 
 
+def test_embeddings_stats(kb: Path) -> None:
+    runner = CliRunner()
+    result = runner.invoke(cli, ["embeddings", "stats"])
+    assert result.exit_code == 0
+    assert "model" in result.output.lower() or "claim" in result.output.lower()
+
+
 def test_eval_embedding_outputs_metrics(kb: Path, tmp_path: Path) -> None:
     import json as _json
     qfile = tmp_path / "queries.jsonl"

@@ -581,6 +581,31 @@ def dedup(threshold: float, dry_run: bool) -> None:
         )
 
 
+@cli.group()
+def embeddings() -> None:
+    """Embedding maintenance commands."""
+
+
+@embeddings.command("stats")
+def embeddings_stats() -> None:
+    """Print model identity, per-kind counts, and cache hit rate."""
+    from . import index_db
+    from .embeddings.cache import query_cache_stats
+    store = _load_store()
+    meta = index_db.get_embedding_meta(store.kb_dir)
+    for k, v in sorted(meta.items()):
+        click.echo(f"{k}\t{v}")
+    with index_db.open_db(store.kb_dir) as conn:
+        rows = conn.execute(
+            "SELECT kind, COUNT(*) FROM embedding_index GROUP BY kind"
+        ).fetchall()
+    for k, n in rows:
+        click.echo(f"embedding_count_{k}\t{n}")
+    cs = query_cache_stats(store.kb_dir)
+    click.echo(f"query_cache_entries\t{cs['entries']}")
+    click.echo(f"query_cache_hits\t{cs['hits']}")
+
+
 @cli.group(name="eval")
 def eval_group() -> None:
     """Evaluation harnesses."""
