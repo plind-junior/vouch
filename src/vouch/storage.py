@@ -246,10 +246,10 @@ class KBStore:
         try:
             with self._claim_path(claim.id).open("x") as f:
                 f.write(_yaml_dump(claim.model_dump(mode="json")))
-        except FileExistsError:
+        except FileExistsError as e:
             raise ValueError(
                 f"claim {claim.id} already exists -- use update_claim()"
-            )
+            ) from e
         return claim
 
     def get_claim(self, claim_id: str) -> Claim:
@@ -282,10 +282,10 @@ class KBStore:
         try:
             with self._page_path(page.id).open("x") as f:
                 f.write(_serialize_page(page))
-        except FileExistsError:
+        except FileExistsError as e:
             raise ValueError(
                 f"page {page.id} already exists -- choose a different slug"
-            )
+            ) from e
         return page
 
     def get_page(self, page_id: str) -> Page:
@@ -306,10 +306,10 @@ class KBStore:
         try:
             with self._entity_path(entity.id).open("x") as f:
                 f.write(_yaml_dump(entity.model_dump(mode="json")))
-        except FileExistsError:
+        except FileExistsError as e:
             raise ValueError(
                 f"entity {entity.id} already exists -- choose a different slug"
-            )
+            ) from e
         return entity
 
     def get_entity(self, eid: str) -> Entity:
@@ -331,10 +331,10 @@ class KBStore:
         try:
             with self._relation_path(rel.id).open("x") as f:
                 f.write(_yaml_dump(rel.model_dump(mode="json")))
-        except FileExistsError:
+        except FileExistsError as e:
             raise ValueError(
                 f"relation {rel.id} already exists -- choose a different slug"
-            )
+            ) from e
         return rel
 
     def get_relation(self, rid: str) -> Relation:
@@ -364,10 +364,10 @@ class KBStore:
         try:
             with self._evidence_path(ev.id).open("x") as f:
                 f.write(_yaml_dump(ev.model_dump(mode="json")))
-        except FileExistsError:
+        except FileExistsError as e:
             raise ValueError(
                 f"evidence {ev.id} already exists -- choose a different slug"
-            )
+            ) from e
         return ev
 
     def get_evidence(self, eid: str) -> Evidence:
@@ -389,10 +389,19 @@ class KBStore:
         try:
             with self._session_path(sess.id).open("x") as f:
                 f.write(_yaml_dump(sess.model_dump(mode="json")))
-        except FileExistsError:
+        except FileExistsError as e:
             raise ValueError(
                 f"session {sess.id} already exists -- choose a different id"
-            )
+            ) from e
+        return sess
+
+    def update_session(self, sess: Session) -> Session:
+        # session_end() mutates an already-on-disk session (sets ended_at /
+        # backfills proposal_ids). put_session() uses exclusive create as a
+        # guard against duplicate ids, so updates need a separate path.
+        if not self._session_path(sess.id).exists():
+            raise ArtifactNotFoundError(f"session {sess.id}")
+        self._session_path(sess.id).write_text(_yaml_dump(sess.model_dump(mode="json")))
         return sess
 
     def get_session(self, sid: str) -> Session:
@@ -414,10 +423,10 @@ class KBStore:
         try:
             with self._proposal_path(proposal.id).open("x") as f:
                 f.write(_yaml_dump(proposal.model_dump(mode="json")))
-        except FileExistsError:
+        except FileExistsError as e:
             raise ValueError(
                 f"proposal {proposal.id} already exists -- choose a different id"
-            )
+            ) from e
         return proposal
 
     def get_proposal(self, proposal_id: str) -> Proposal:
