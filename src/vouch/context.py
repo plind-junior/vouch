@@ -66,7 +66,7 @@ def _enrich_summary(store: KBStore, kind: str, artifact_id: str, summary: str) -
             return p.title or p.body[:200]
         if kind == "entity":
             e = store.get_entity(artifact_id)
-            return e.name or e.description[:200]
+            return e.name or (e.description or "")[:200]
     except Exception:
         pass
     return summary
