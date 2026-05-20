@@ -319,3 +319,32 @@ def search_embedding(
             scored.append((kind, id_, "", score))
     scored.sort(key=lambda r: r[3], reverse=True)
     return scored[:limit]
+
+
+def search_semantic(
+    kb_dir: Path,
+    query: str,
+    *,
+    limit: int = 10,
+    kinds: tuple[str, ...] = (
+        "claim", "page", "source", "entity", "relation", "evidence",
+    ),
+    min_score: float = 0.0,
+) -> list[tuple[str, str, str, float]]:
+    """Encode query (cached) -> ANN/cosine search."""
+    try:
+        from .embeddings import get_embedder
+        from .embeddings.cache import cache_query_vec, lookup_query_vec
+    except ImportError:
+        return []
+    try:
+        embedder = get_embedder()
+    except KeyError:
+        return []
+    qvec = lookup_query_vec(kb_dir, query=query)
+    if qvec is None:
+        qvec = embedder.encode(query)
+        cache_query_vec(kb_dir, query=query, vec=qvec)
+    return search_embedding(
+        kb_dir, query_vec=qvec, kinds=kinds, limit=limit, min_score=min_score,
+    )

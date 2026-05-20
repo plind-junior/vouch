@@ -93,3 +93,11 @@ def test_update_claim_recomputes_embedding(store: KBStore) -> None:
     rec_after = index_db.get_embedding(store.kb_dir, kind="claim", id="c1")
     assert rec_after is not None
     assert rec_after[1] != hash_before
+
+
+def test_search_semantic_returns_top_hits(store: KBStore) -> None:
+    src = store.put_source(b"e")
+    store.put_claim(Claim(id="c1", text="alpha alpha alpha", evidence=[src.id]))
+    store.put_claim(Claim(id="c2", text="beta beta beta", evidence=[src.id]))
+    hits = index_db.search_semantic(store.kb_dir, query="alpha alpha alpha", limit=2)
+    assert hits[0][1] == "c1"
