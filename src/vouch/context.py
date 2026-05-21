@@ -17,7 +17,7 @@ from typing import Literal, cast
 
 from . import index_db
 from .models import ContextItem, ContextPack, ContextQuality
-from .storage import KBStore
+from .storage import ArtifactNotFoundError, KBStore
 
 ContextItemKind = Literal["claim", "page", "entity", "relation", "source"]
 
@@ -41,7 +41,7 @@ def _retrieve(store: KBStore, query: str, limit: int
 def _citations_for_claim(store: KBStore, claim_id: str) -> list[str]:
     try:
         claim = store.get_claim(claim_id)
-    except Exception:
+    except ArtifactNotFoundError:
         return []
     return list(claim.evidence)
 
