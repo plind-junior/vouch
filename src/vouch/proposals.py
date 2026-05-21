@@ -217,6 +217,11 @@ def approve(
     approved_by: str,
     reason: str | None = None,
 ) -> Claim | Page | Entity | Relation:
+    """Approve a pending proposal and write it as a durable artifact.
+
+    Raises ProposalError if the proposal is not pending or if
+    approved_by matches proposed_by (forbidden_self_approval).
+    """
     proposal = store.get_proposal(proposal_id)
     if proposal.status != ProposalStatus.PENDING:
         raise ProposalError(
