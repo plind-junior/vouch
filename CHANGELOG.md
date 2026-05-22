@@ -7,6 +7,12 @@ All notable changes to vouch are documented here. Format follows
 ## [Unreleased]
 
 ### Fixed
+- `vouch crystallize` now indexes its session-summary page into FTS5 so it
+  surfaces from `vouch search` / `kb.search` / `kb.context` without a
+  `vouch index` rebuild. Previously the summary was written via
+  `store.put_page()` only, so on KBs with a populated `state.db` it was
+  silently absent from search results (the substring fallback only fires
+  when FTS5 returns nothing).
 - Fix `vouch search` CLI: assign backend label per code path so substring fallback results are no longer mislabelled as `fts5`; update stale docstring to reflect multi-backend search surface (#52).
 
 ### Fixed
