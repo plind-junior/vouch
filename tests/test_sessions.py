@@ -47,9 +47,6 @@ def test_crystallize_skips_already_approved(store: KBStore) -> None:
 
 
 def test_crystallize_summary_page_is_fts5_indexed(store: KBStore) -> None:
-    # The crystallize summary Page must reach the same FTS5 surface as any
-    # other approved Page; otherwise `vouch search` / kb.search miss it
-    # whenever state.db has other rows that suppress the substring fallback.
     src = store.put_source(b"e")
     sess = sess_mod.session_start(store, agent="claude-code")
     propose_claim(store, text="findable claim", evidence=[src.id],
@@ -59,5 +56,5 @@ def test_crystallize_summary_page_is_fts5_indexed(store: KBStore) -> None:
 
     summary_id = result["summary_page_id"]
     assert summary_id is not None
-    hits = index_db.search(store.kb_dir, summary_id, limit=10)
+    hits = index_db.search(store.kb_dir, sess.id, limit=10)
     assert any(kind == "page" and hid == summary_id for kind, hid, _, _ in hits)
