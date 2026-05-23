@@ -142,13 +142,6 @@ def kb_search(
 
     raise ValueError(f"unknown backend: {backend}")
 
-                    "backend": "hybrid",
-                })
-    for item in fused:
-        item["score"] = seen[(item["kind"], item["id"])]
-    fused.sort(key=lambda x: x["score"], reverse=True)
-    return fused[:limit]
-
 
 @mcp.tool()
 def kb_context(
