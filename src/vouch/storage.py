@@ -404,11 +404,19 @@ class KBStore:
         """
         path = self._relation_path(rel.id)
         if path.exists():
+            self._embed_and_store(
+                kind="relation", id=rel.id,
+                text=f"{rel.source} {rel.relation.value} {rel.target}",
+            )
             return rel
         try:
             with path.open("x") as f:
                 f.write(_yaml_dump(rel.model_dump(mode="json")))
         except FileExistsError:
+            self._embed_and_store(
+                kind="relation", id=rel.id,
+                text=f"{rel.source} {rel.relation.value} {rel.target}",
+            )
             return rel  # lost the race — already written, that's fine
         self._embed_and_store(
             kind="relation", id=rel.id,
