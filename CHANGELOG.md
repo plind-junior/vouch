@@ -32,6 +32,17 @@ All notable changes to vouch are documented here. Format follows
   a silent no-op. Existing Linux/macOS bundles are unchanged (their paths
   were already POSIX); Windows bundles produced before this fix should be
   re-exported.
+- `bundle.import_check` and `bundle.import_apply` now verify each tar
+  member's `sha256` against `manifest.json` (#74). Previously the
+  per-file hash was only enforced by `export_check`; the import side
+  trusted any tar member whose path appeared in the manifest, so a
+  tampered tarball with an unchanged manifest could land
+  attacker-controlled content into the KB while the audit log
+  recorded a clean `bundle.import` event. `import_apply` re-verifies
+  at write time and raises on mismatch, so a bundle that is tampered
+  with between `import_check` and the apply re-open is rejected
+  before anything reaches disk and the audit log does not record
+  a `bundle.import` event.
 
 ## [0.0.1] — 2026-05-17
 
