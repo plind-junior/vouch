@@ -6,6 +6,8 @@ All notable changes to vouch are documented here. Format follows
 
 ## [Unreleased]
 
+## [0.1.0] — 2026-05-26
+
 ### Added
 - Seed a cited starter source and claim during `vouch init`, print first-run
   next steps, and document a 30-second onboarding tour (#54).
@@ -72,5 +74,6 @@ Initial alpha. Surface intentionally small; expect breaking changes pre-1.0.
 - Claim validation: at least one source/evidence citation required.
 - Per-agent attribution via `VOUCH_AGENT` env var.
 
-[Unreleased]: https://github.com/plind-junior/vouch/compare/v0.0.1...HEAD
-[0.0.1]: https://github.com/plind-junior/vouch/releases/tag/v0.0.1
+[Unreleased]: https://github.com/vouchdev/vouch/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/vouchdev/vouch/compare/v0.0.1...v0.1.0
+[0.0.1]: https://github.com/vouchdev/vouch/releases/tag/v0.0.1
