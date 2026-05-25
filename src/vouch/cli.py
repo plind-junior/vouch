@@ -768,6 +768,38 @@ def import_apply_cmd(bundle_path: str, on_conflict: str) -> None:
     _emit_json(r)
 
 
+# --- diff -----------------------------------------------------------------
+
+
+@cli.command()
+@click.argument("old_id")
+@click.argument("new_id")
+@click.option("--json", "as_json", is_flag=True, default=False,
+              help="Emit the diff as JSON.")
+def diff(old_id: str, new_id: str, as_json: bool) -> None:
+    """Show what changed between two claim or two page revisions."""
+    from dataclasses import asdict
+
+    from .diff import diff_artifacts
+    store = _load_store()
+    with _cli_errors():
+        d = diff_artifacts(store, old_id, new_id)
+    if as_json:
+        _emit_json(asdict(d))
+        return
+    if not d.changes and not d.text_diff:
+        click.echo("no differences")
+        return
+    click.echo(f"diff {d.kind} {d.old_id} → {d.new_id}")
+    for c in d.changes:
+        click.echo(f"  {c.field}: {c.old} → {c.new}")
+    if d.text_diff:
+        label = "body" if d.kind == "page" else "text"
+        click.echo(f"  {label}:")
+        for line in d.text_diff:
+            click.echo(f"    {line}")
+
+
 # --- serve ----------------------------------------------------------------
 
 

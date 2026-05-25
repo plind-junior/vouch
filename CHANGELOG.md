@@ -7,6 +7,7 @@ All notable changes to vouch are documented here. Format follows
 ## [Unreleased]
 
 ### Added
+- `vouch diff <id-old> <id-new>` shows what changed between two claim revisions or two page revisions — field-level changes plus a line-diff of the long text/body. Auto-detects the artifact kind and hides always-churning metadata. Read-only; supports `--json`.
 - Seed a cited starter source and claim during `vouch init`, print first-run
   next steps, and document a 30-second onboarding tour (#54).
 
