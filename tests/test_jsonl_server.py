@@ -57,6 +57,7 @@ def test_jsonl_full_flow(store: KBStore, monkeypatch) -> None:
     pr = handle_request({"id": "1", "method": "kb.propose_claim",
                          "params": {"text": "JWT used", "evidence": [src.id]}})
     pid = pr["result"]["proposal_id"]
+    monkeypatch.setenv("VOUCH_AGENT", "human-reviewer")
     handle_request({"id": "2", "method": "kb.approve",
                     "params": {"proposal_id": pid}})
     status = handle_request({"id": "3", "method": "kb.status", "params": {}})
@@ -147,6 +148,42 @@ def test_jsonl_session_lifecycle(store: KBStore, monkeypatch) -> None:
                                "session_id": sid}})
     handle_request({"id": "3", "method": "kb.session_end",
                     "params": {"session_id": sid}})
+    monkeypatch.setenv("VOUCH_AGENT", "human-reviewer")
     cryst = handle_request({"id": "4", "method": "kb.crystallize",
                             "params": {"session_id": sid}})
     assert len(cryst["result"]["approved"]) == 1
+
+
+def test_jsonl_self_approval_forbidden(store: KBStore, monkeypatch) -> None:
+    """approve() must raise forbidden_self_approval when proposer == approver."""
+    src = store.put_source(b"evidence")
+    monkeypatch.chdir(store.root)
+    pr = handle_request({"id": "1", "method": "kb.propose_claim",
+                         "params": {"text": "test claim", "evidence": [src.id]}})
+    pid = pr["result"]["proposal_id"]
+    # Same agent approves — must fail
+    resp = handle_request({"id": "2", "method": "kb.approve",
+                           "params": {"proposal_id": pid}})
+    assert not resp["ok"]
+    assert "forbidden_self_approval" in resp["error"]["message"]
+
+
+def test_jsonl_self_approval_allowed_with_trusted_agent_config(
+    store: KBStore, monkeypatch
+) -> None:
+    """approve() must allow self-approval when review.approver_role=trusted-agent."""
+    import yaml
+    # Set trusted-agent opt-out in config
+    cfg_path = store.kb_dir / "config.yaml"
+    cfg = yaml.safe_load(cfg_path.read_text()) or {}
+    cfg.setdefault("review", {})["approver_role"] = "trusted-agent"
+    cfg_path.write_text(yaml.safe_dump(cfg))
+
+    src = store.put_source(b"evidence")
+    monkeypatch.chdir(store.root)
+    pr = handle_request({"id": "1", "method": "kb.propose_claim",
+                         "params": {"text": "test claim", "evidence": [src.id]}})
+    pid = pr["result"]["proposal_id"]
+    resp = handle_request({"id": "2", "method": "kb.approve",
+                           "params": {"proposal_id": pid}})
+    assert resp["ok"]

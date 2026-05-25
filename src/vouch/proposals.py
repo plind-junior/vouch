@@ -217,11 +217,34 @@ def approve(
     approved_by: str,
     reason: str | None = None,
 ) -> Claim | Page | Entity | Relation:
+    """Approve a pending proposal and write it as a durable artifact.
+
+    Raises ProposalError if the proposal is not pending or if
+    approved_by matches proposed_by (forbidden_self_approval).
+    """
     proposal = store.get_proposal(proposal_id)
     if proposal.status != ProposalStatus.PENDING:
         raise ProposalError(
             f"proposal {proposal_id} is {proposal.status.value}, not pending"
         )
+    if approved_by == proposal.proposed_by:
+        cfg: dict[str, Any] = {}
+        try:
+            import yaml
+            loaded = yaml.safe_load((store.kb_dir / "config.yaml").read_text())
+            if isinstance(loaded, dict):
+                cfg = loaded
+        except Exception:
+            pass
+        review_cfg = cfg.get("review")
+        approver_role = (
+            review_cfg.get("approver_role") if isinstance(review_cfg, dict) else None
+        )
+        if approver_role != "trusted-agent":
+            raise ProposalError(
+                f"forbidden_self_approval: {approved_by} cannot approve their own "
+                "proposal (set review.approver_role: trusted-agent in config.yaml to opt out)"
+            )
     payload = dict(proposal.payload)
     # Refuse to overwrite an existing artifact. Without this guard a retry
     # after a crash between put_<kind>() and move_proposal_to_decided() would
