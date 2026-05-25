@@ -591,6 +591,75 @@ def kb_audit(tail: int = 50) -> list[dict[str, Any]]:
     return [e.model_dump(mode="json") for e in events]
 
 
+@mcp.tool()
+def kb_reindex_embeddings(
+    *, backfill: bool = False, force: bool = False, model: str | None = None,
+) -> dict[str, Any]:
+    """Re-encode every artifact under the current embedding adapter."""
+    from .embeddings.migration import backfill_embeddings
+    store = _store()
+    if model:
+        from .embeddings import get_embedder
+        get_embedder(model)
+    n = backfill_embeddings(store, force=force)
+    return {"touched": n, "model": _current_model_name()}
+
+
+@mcp.tool()
+def kb_dedup_scan(
+    *, threshold: float = 0.95, dry_run: bool = False,
+) -> dict[str, Any]:
+    """Find near-duplicate artifacts via embedding cosine."""
+    from .embeddings.dedup import scan_all
+    store = _store()
+    rows = scan_all(store.kb_dir, threshold=threshold, dry_run=dry_run)
+    return {"duplicates": rows, "threshold": threshold}
+
+
+@mcp.tool()
+def kb_eval_embeddings(*, queries_path: str, k: int = 10) -> dict[str, Any]:
+    """Run retrieval eval over a JSONL queries file."""
+    from pathlib import Path
+
+    from .embeddings.scorer import evaluate
+    store = _store()
+    return evaluate(
+        kb_dir=store.kb_dir,
+        queries_file=Path(queries_path),
+        k=k,
+    )
+
+
+@mcp.tool()
+def kb_embeddings_stats() -> dict[str, Any]:
+    """Model identity, per-kind counts, query cache stats."""
+    from . import index_db
+    from .embeddings.cache import query_cache_stats
+    store = _store()
+    meta = index_db.get_embedding_meta(store.kb_dir)
+    counts: dict[str, int] = {}
+    with index_db.open_db(store.kb_dir) as conn:
+        for k, n in conn.execute(
+            "SELECT kind, COUNT(*) FROM embedding_index GROUP BY kind"
+        ):
+            counts[k] = int(n)
+    return {
+        "model": meta.get("embedding_model"),
+        "model_version": meta.get("embedding_model_version"),
+        "dim": meta.get("embedding_dim"),
+        "counts": counts,
+        "query_cache": query_cache_stats(store.kb_dir),
+    }
+
+
+def _current_model_name() -> str:
+    try:
+        from .embeddings import get_embedder
+        return get_embedder().name
+    except Exception:
+        return ""
+
+
 def run_stdio() -> None:
     """Entry point used by `vouch serve`."""
     mcp.run()
