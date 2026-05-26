@@ -7,6 +7,13 @@ All notable changes to vouch are documented here. Format follows
 ## [Unreleased]
 
 ### Added
+- Friendlier CLI output (#54, track 2): colourised `vouch status` / `lint` /
+  `doctor` / `search` (honours `NO_COLOR`, `FORCE_COLOR`, and TTY detection);
+  `--json` on `vouch lint` and `vouch search` for machine-readable output
+  while the default stays human-readable; progress callbacks on the long ops
+  (`rebuild_index`, `doctor`, bundle `export`/`import_apply`) surfaced as
+  status lines on interactive terminals; and `vouch index` / `vouch export`
+  now report a clean `Error:` instead of a traceback on a malformed artifact.
 - `vouch sync-check` and `vouch sync-apply` reconcile another `.vouch`
   directory or bundle by importing only non-conflicting durable artifacts and
   reporting conflicts without overwriting reviewed knowledge.
