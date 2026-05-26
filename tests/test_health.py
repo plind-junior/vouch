@@ -96,6 +96,7 @@ def test_fsck_flags_dangling_superseded_by(store: KBStore) -> None:
     report = health.fsck(store)
     codes = {f.code for f in report.findings}
     assert "dangling_superseded_by" in codes
+    assert report.ok is False
 
 
 def test_fsck_flags_dangling_contradicts(store: KBStore) -> None:
@@ -106,6 +107,7 @@ def test_fsck_flags_dangling_contradicts(store: KBStore) -> None:
     report = health.fsck(store)
     codes = {f.code for f in report.findings}
     assert "dangling_contradicts" in codes
+    assert report.ok is False
 
 
 def test_fsck_flags_asymmetric_contradicts(store: KBStore) -> None:
