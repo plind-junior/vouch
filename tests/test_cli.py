@@ -316,3 +316,74 @@ def test_crystallize_cli_partial_failures_shows_warning(
     assert result.exit_code == 0
     assert "warning:" in result.stderr
     assert "1/2 proposal(s) failed" in result.stderr
+
+
+# --- batch approval (#93) -------------------------------------------------
+
+
+def _propose_n(store: KBStore, n: int) -> list[str]:
+    src = store.put_source(b"e")
+    ids = []
+    for i in range(n):
+        pr = propose_claim(
+            store, text=f"batch claim {i}", evidence=[src.id], proposed_by="agent"
+        )
+        ids.append(pr.id)
+    return ids
+
+
+def test_approve_batch_approves_all(
+    store: KBStore, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("VOUCH_AGENT", raising=False)
+    ids = _propose_n(store, 3)
+    result = CliRunner().invoke(cli, ["approve", *ids])
+    assert result.exit_code == 0, result.output
+    pending = {p.id for p in store.list_proposals(ProposalStatus.PENDING)}
+    for pid in ids:
+        assert pid not in pending
+    assert result.output.count("Approved") == 3
+
+
+def test_approve_batch_one_audit_event_per_artifact(
+    store: KBStore, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from vouch import audit
+    monkeypatch.delenv("VOUCH_AGENT", raising=False)
+    ids = _propose_n(store, 2)
+    CliRunner().invoke(cli, ["approve", *ids])
+    approve_events = [
+        e for e in audit.read_events(store.kb_dir)
+        if e.event.endswith(".approve")
+    ]
+    assert len(approve_events) == 2
+
+
+def test_approve_batch_atomic_aborts_on_bad_id(
+    store: KBStore, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Default is all-or-nothing: one bad id approves nothing."""
+    monkeypatch.delenv("VOUCH_AGENT", raising=False)
+    good = _propose_n(store, 2)
+    result = CliRunner().invoke(cli, ["approve", good[0], "no-such-id", good[1]])
+    assert result.exit_code != 0, result.output
+    assert "Traceback" not in result.output
+    # Nothing approved — both good proposals are still pending.
+    for cid in good:
+        assert cid in {p.id for p in store.list_proposals(ProposalStatus.PENDING)}
+
+
+def test_approve_batch_keep_going_best_effort(
+    store: KBStore, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """--keep-going approves what it can and exits non-zero on partial failure."""
+    monkeypatch.delenv("VOUCH_AGENT", raising=False)
+    good = _propose_n(store, 2)
+    result = CliRunner().invoke(
+        cli, ["approve", "--keep-going", good[0], "no-such-id", good[1]]
+    )
+    assert result.exit_code != 0, result.output
+    # Both valid proposals were approved despite the bad id in the middle.
+    pending = {p.id for p in store.list_proposals(ProposalStatus.PENDING)}
+    assert good[0] not in pending
+    assert good[1] not in pending

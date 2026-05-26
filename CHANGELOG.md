@@ -22,6 +22,14 @@ All notable changes to vouch are documented here. Format follows
   (`rebuild_index`, `doctor`, bundle `export`/`import_apply`) surfaced as
   status lines on interactive terminals; and `vouch index` / `vouch export`
   now report a clean `Error:` instead of a traceback on a malformed artifact.
+- `vouch approve <id1> <id2> …` approves multiple proposals in one
+  non-interactive call for CI and backlog clearing (#93). Default is
+  all-or-nothing: every id is validated as an approvable pending proposal
+  before any is written, so a typo or already-decided id aborts the batch
+  without approving anything. `--keep-going` switches to best-effort
+  (approve what you can, report the rest, exit non-zero on partial failure).
+  One audit event is still recorded per approved artifact. Complements the
+  interactive `vouch review` queue.
 - `vouch sync-check` and `vouch sync-apply` reconcile another `.vouch`
   directory or bundle by importing only non-conflicting durable artifacts and
   reporting conflicts without overwriting reviewed knowledge.
