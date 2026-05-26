@@ -154,8 +154,12 @@ class KBStore:
             )
         if resolved.is_dir():
             raise ValueError(f"not a regular file: {resolved}")
+        flags = os.O_RDONLY
+        # POSIX can reject a symlink swapped in after resolve(); Windows has
+        # no O_NOFOLLOW, so it falls back to the regular-file check below.
+        flags |= getattr(os, "O_NOFOLLOW", 0)
         try:
-            fd = os.open(resolved, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+            fd = os.open(resolved, flags)
         except OSError as e:
             raise ValueError(f"cannot read {resolved}: {e}") from e
         try:

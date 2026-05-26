@@ -41,6 +41,23 @@ def test_sync_check_and_apply_from_kb_directory(tmp_path: Path) -> None:
     assert dest.get_claim("c1").text == "alpha"
 
 
+def test_sync_excludes_config_yaml(tmp_path: Path) -> None:
+    incoming = _store(tmp_path / "incoming")
+    incoming.config_path.write_text("version: 1\nsync: incoming\n")
+    _claim(incoming, "c1", "alpha")
+    dest = _store(tmp_path / "dest")
+    dest.config_path.write_text("version: 1\nsync: local\n")
+
+    report = sync.sync_check(dest.kb_dir, incoming.root)
+
+    assert "config.yaml" not in report.new_files
+    assert "config.yaml" not in report.identical
+    assert not any(c.path == "config.yaml" for c in report.conflicts)
+
+    sync.sync_apply(dest.kb_dir, incoming.root)
+    assert dest.config_path.read_text() == "version: 1\nsync: local\n"
+
+
 def test_sync_check_classifies_claim_conflicts(tmp_path: Path) -> None:
     incoming = _store(tmp_path / "incoming")
     _claim(incoming, "c1", "incoming text")

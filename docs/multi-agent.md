@@ -109,7 +109,8 @@ bundle. It reports new files, identical files, and conflicts without
 writing anything. `sync-apply` imports non-conflicting files only; it
 never overwrites reviewed knowledge. Use `--on-conflict skip` to leave
 conflicts untouched, or `--on-conflict propose` to write a local conflict
-report under `proposed/sync-reports/` for human review.
+report under `proposed/sync-reports/` for human review. `config.yaml`
+stays local to each KB and is not synced.
 
 ## What doesn't work yet
 

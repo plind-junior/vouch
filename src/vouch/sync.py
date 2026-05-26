@@ -17,6 +17,8 @@ from typing import Any
 from . import audit, bundle
 from .storage import sha256_hex
 
+_SYNC_EXCLUDED_PATHS = {"config.yaml"}
+
 
 @dataclass
 class IncomingFile:
@@ -110,6 +112,14 @@ def _source_id(files: dict[str, IncomingFile]) -> str:
     return h
 
 
+def _syncable_files(files: dict[str, IncomingFile]) -> dict[str, IncomingFile]:
+    return {
+        path: file
+        for path, file in files.items()
+        if path not in _SYNC_EXCLUDED_PATHS
+    }
+
+
 def _resolve_kb_dir(source_path: Path) -> Path:
     if (source_path / ".vouch").is_dir():
         return source_path / ".vouch"
@@ -125,6 +135,7 @@ def _load_directory_source(source_path: Path) -> _SyncSource:
         path = rel.as_posix()
         data = abs_path.read_bytes()
         files[path] = IncomingFile(path=path, size=len(data), sha256=sha256_hex(data))
+    files = _syncable_files(files)
     return _SyncSource(
         source_type="kb",
         source_id=_source_id(files),
@@ -149,9 +160,10 @@ def _load_bundle_source(source_path: Path) -> _SyncSource:
         )
         for f in manifest.get("files", [])
     }
+    files = _syncable_files(files)
     return _SyncSource(
         source_type="bundle",
-        source_id=manifest.get("bundle_id") or _source_id(files),
+        source_id=_source_id(files),
         display=str(source_path),
         files=files,
         bundle_path=source_path,
