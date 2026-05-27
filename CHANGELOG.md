@@ -53,6 +53,26 @@ All notable changes to vouch are documented here. Format follows
   with between `import_check` and the apply re-open is rejected
   before anything reaches disk and the audit log does not record
   a `bundle.import` event.
+- `Claim.evidence` now enforces "at least one citation" at the model
+  layer via a `@field_validator` (#81). Previously the
+  README-documented guarantee ("Claims must cite sources … a claim
+  without at least one Source/Evidence id is a validation error")
+  was enforced only in `proposals.propose_claim`, so every other
+  write path — direct `store.put_claim`, `store.update_claim`, and
+  `bundle.import_apply` via `_validate_content` — silently accepted
+  `evidence: []` and landed an uncited claim. The validator closes
+  all three paths at once; `store.update_claim` additionally
+  re-validates via `Claim.model_validate(...)` before persisting so
+  in-place mutation (`c.evidence = []; store.update_claim(c)`)
+  also raises before the YAML hits disk. **Migration note:** because
+  the validator also fires when claims are read back, a KB that
+  already has an uncited `claims/<id>.yaml` on disk from before this
+  fix would otherwise crash `vouch lint` / `vouch doctor` with a
+  `pydantic.ValidationError`. `vouch lint` now iterates `claims/`
+  per-file and surfaces unparseable / uncited YAMLs as
+  `invalid_claim` findings ("edit the YAML to add a citation, or
+  delete the file") instead of bailing out — so existing KBs get a
+  clean repair list rather than a traceback.
 - Close the review-gate bypass in `sessions.crystallize` (#76). The
   durable session-summary page wrote `sess.task`, `sess.note`, and
   `sess.agent` verbatim into rendered markdown, letting an agent

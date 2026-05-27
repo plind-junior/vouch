@@ -325,6 +325,12 @@ class KBStore:
     def update_claim(self, claim: Claim) -> Claim:
         if not self._claim_path(claim.id).exists():
             raise ArtifactNotFoundError(f"claim {claim.id}")
+        # Re-validate the in-memory Claim before persisting so model
+        # invariants (e.g. evidence must be non-empty — see #81) hold
+        # even when a caller mutated fields in place after get_claim().
+        # The Claim model's field validators only run at construction
+        # time; mutation alone bypasses them unless we round-trip.
+        Claim.model_validate(claim.model_dump(mode="json"))
         self._claim_path(claim.id).write_text(_yaml_dump(claim.model_dump(mode="json")))
         self._embed_and_store(kind="claim", id=claim.id, text=claim.text)
         return claim
