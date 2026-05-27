@@ -374,3 +374,23 @@ def test_approve_batch_keep_going_best_effort(
     pending = {p.id for p in store.list_proposals(ProposalStatus.PENDING)}
     assert good[0] not in pending
     assert good[1] not in pending
+
+
+def test_propose_claim_corrupt_source_surfaces_real_error(store: KBStore) -> None:
+    """Corrupt meta.yaml must surface a parse error, not 'unknown source/evidence id'."""
+    import pytest
+
+    from vouch.proposals import ProposalError, propose_claim
+
+    src = store.put_source(b"evidence content")
+    meta = store.kb_dir / "sources" / src.id / "meta.yaml"
+    meta.write_text("{ invalid: yaml: [")
+
+    with pytest.raises(Exception) as excinfo:
+        propose_claim(
+            store, text="some claim", evidence=[src.id], proposed_by="agent"
+        )
+    assert not (
+        isinstance(excinfo.value, ProposalError)
+        and "unknown source/evidence id" in str(excinfo.value)
+    ), f"real parse error was masked: {excinfo.value}"
