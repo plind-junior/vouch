@@ -33,6 +33,7 @@ from .models import Proposal, ProposalKind, ProposalStatus
 from .onboarding import seed_starter_kb
 from .proposals import (
     ProposalError,
+    check_approvable,
     propose_claim,
     propose_entity,
     propose_page,
@@ -395,14 +396,60 @@ def show(proposal_id: str) -> None:
 
 
 @cli.command()
-@click.argument("proposal_id")
+@click.argument("proposal_ids", nargs=-1, required=True)
 @click.option("--reason", default=None)
-def approve(proposal_id: str, reason: str | None) -> None:
-    """Approve a proposal — converts it into a durable artifact."""
+@click.option(
+    "--keep-going", is_flag=True,
+    help="Best-effort: approve every id that can be approved and report the "
+         "rest, instead of the default all-or-nothing precheck.",
+)
+def approve(proposal_ids: tuple[str, ...], reason: str | None, keep_going: bool) -> None:
+    """Approve one or more proposals — converts each into a durable artifact.
+
+    Pass several ids to approve a batch in one call (useful for CI and
+    clearing a review backlog). One audit event is recorded per approved
+    artifact.
+
+    Semantics:
+
+    \b
+    - default (all-or-nothing): every id is validated as an approvable
+      pending proposal before any is written; a typo or already-decided id
+      aborts the whole batch and nothing is approved.
+    - --keep-going (best-effort): approve each id independently, report the
+      failures, and exit non-zero if any failed.
+    """
     store = _load_store()
-    with _cli_errors():
-        artifact = do_approve(store, proposal_id, approved_by=_whoami(), reason=reason)
-    click.echo(f"Approved → {type(artifact).__name__.lower()}/{artifact.id}")
+    approver = _whoami()
+
+    if not keep_going:
+        blocked = [
+            (pid, reason_blocked)
+            for pid in proposal_ids
+            if (reason_blocked := check_approvable(store, pid, approved_by=approver))
+        ]
+        if blocked:
+            for pid, why in blocked:
+                click.echo(f"✗ {pid}: {why}", err=True)
+            raise click.ClickException(
+                f"refusing to approve: {len(blocked)} of {len(proposal_ids)} not "
+                "approvable — nothing was approved (use --keep-going for best-effort)"
+            )
+
+    failures = 0
+    for pid in proposal_ids:
+        try:
+            artifact = do_approve(store, pid, approved_by=approver, reason=reason)
+        except (ArtifactNotFoundError, ValueError, ProposalError, LifecycleError) as e:
+            failures += 1
+            click.echo(f"✗ {pid}: {e}", err=True)
+            continue
+        click.echo(f"Approved → {type(artifact).__name__.lower()}/{artifact.id}")
+
+    if failures:
+        raise click.ClickException(
+            f"{failures} of {len(proposal_ids)} proposal(s) failed to approve"
+        )
 
 
 @cli.command()
