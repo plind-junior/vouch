@@ -82,14 +82,14 @@ def test_metrics_approval_rate(store: KBStore) -> None:
 
 
 def test_metrics_citation_coverage(store: KBStore) -> None:
-    src = store.put_source(b"e")
     assert health.metrics(store)["citation_coverage"] is None
 
-    store.put_claim(Claim(id="c1", text="uncited"))
-    assert health.metrics(store)["citation_coverage"] == 0.0
+    src = store.put_source(b"e")
+    store.put_claim(Claim(id="c1", text="cited", evidence=[src.id]))
+    assert health.metrics(store)["citation_coverage"] == 1.0
 
-    store.put_claim(Claim(id="c2", text="cited", evidence=[src.id]))
-    assert health.metrics(store)["citation_coverage"] == 0.5
+    store.put_claim(Claim(id="c2", text="also cited", evidence=[src.id]))
+    assert health.metrics(store)["citation_coverage"] == 1.0
 
 
 def test_metrics_stale_ratio(store: KBStore) -> None:
@@ -97,15 +97,33 @@ def test_metrics_stale_ratio(store: KBStore) -> None:
 
     old = datetime.now(UTC) - timedelta(days=200)
     fresh = datetime.now(UTC)
+    src = store.put_source(b"e")
 
-    store.put_claim(Claim(id="c1", text="stale claim", created_at=old, updated_at=old))
-    store.put_claim(Claim(id="c2", text="fresh claim", created_at=fresh, updated_at=fresh))
+    store.put_claim(
+        Claim(
+            id="c1",
+            text="stale claim",
+            evidence=[src.id],
+            created_at=old,
+            updated_at=old,
+        )
+    )
+    store.put_claim(
+        Claim(
+            id="c2",
+            text="fresh claim",
+            evidence=[src.id],
+            created_at=fresh,
+            updated_at=fresh,
+        )
+    )
     assert health.metrics(store)["stale_ratio"] == 0.5
 
     store.put_claim(
         Claim(
             id="c3",
             text="archived stale",
+            evidence=[src.id],
             created_at=old,
             updated_at=old,
             status=ClaimStatus.ARCHIVED,
@@ -117,11 +135,13 @@ def test_metrics_stale_ratio(store: KBStore) -> None:
 def test_metrics_stale_uses_last_confirmed_at(store: KBStore) -> None:
     old = datetime.now(UTC) - timedelta(days=200)
     recent = datetime.now(UTC) - timedelta(days=30)
+    src = store.put_source(b"e")
 
     store.put_claim(
         Claim(
             id="c1",
             text="old with recent confirm",
+            evidence=[src.id],
             created_at=old,
             updated_at=old,
             last_confirmed_at=recent,

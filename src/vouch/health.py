@@ -75,7 +75,7 @@ def metrics(store: KBStore, *, stale_after_days: int = 180) -> dict:
     rejected = len(decided) - approved
     approval_rate = approved / (approved + rejected) if decided else None
 
-    all_claims = store.list_claims()
+    all_claims, _ = _load_claims_for_lint(store)
     total_claims = len(all_claims)
     cited = sum(1 for c in all_claims if len(c.evidence) > 0)
     citation_coverage = cited / total_claims if total_claims else None
