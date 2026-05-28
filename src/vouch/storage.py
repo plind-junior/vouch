@@ -69,7 +69,9 @@ def _starter_config() -> dict[str, Any]:
         "version": 1,
         "review": {"require_human_approval": True},
         "retrieval": {
-            "backends": ["fts5", "substring"],
+            # auto = embedding -> fts5 -> substring; or pin one of
+            # embedding | fts5 | substring. See context._retrieve.
+            "backend": "auto",
             "default_limit": 10,
         },
         "agents": {
@@ -119,6 +121,7 @@ def _serialize_page(page: Page) -> str:
 
 
 def _deserialize_page(text: str) -> Page:
+    text = text.replace("\r\n", "\n")
     m = _FRONTMATTER_RE.match(text)
     if not m:
         raise ValueError("page file missing YAML frontmatter")
@@ -151,8 +154,14 @@ class KBStore:
             raise ValueError(
                 f"path must be inside project root ({self.root}): {resolved}"
             )
+        if resolved.is_dir():
+            raise ValueError(f"not a regular file: {resolved}")
+        flags = os.O_RDONLY
+        # POSIX can reject a symlink swapped in after resolve(); Windows has
+        # no O_NOFOLLOW, so it falls back to the regular-file check below.
+        flags |= getattr(os, "O_NOFOLLOW", 0)
         try:
-            fd = os.open(resolved, os.O_RDONLY | os.O_NOFOLLOW)
+            fd = os.open(resolved, flags)
         except OSError as e:
             raise ValueError(f"cannot read {resolved}: {e}") from e
         try:
@@ -318,6 +327,12 @@ class KBStore:
     def update_claim(self, claim: Claim) -> Claim:
         if not self._claim_path(claim.id).exists():
             raise ArtifactNotFoundError(f"claim {claim.id}")
+        # Re-validate the in-memory Claim before persisting so model
+        # invariants (e.g. evidence must be non-empty — see #81) hold
+        # even when a caller mutated fields in place after get_claim().
+        # The Claim model's field validators only run at construction
+        # time; mutation alone bypasses them unless we round-trip.
+        Claim.model_validate(claim.model_dump(mode="json"))
         self._claim_path(claim.id).write_text(_yaml_dump(claim.model_dump(mode="json")))
         self._embed_and_store(kind="claim", id=claim.id, text=claim.text)
         return claim

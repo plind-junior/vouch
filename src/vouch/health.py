@@ -7,14 +7,18 @@ contradictions, stale claims. Status is a one-line summary used by tooling.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from typing import Any
+
+from pydantic import ValidationError
 
 from . import index_db
 from .audit import count_events
-from .models import ClaimStatus, ProposalStatus
-from .storage import KBStore, sha256_hex
+from .models import Claim, ClaimStatus, ProposalStatus
+from .storage import KBStore, _yaml_load, sha256_hex
 from .verify import verify_all
 
 
@@ -30,10 +34,15 @@ class Finding:
 class HealthReport:
     ok: bool
     findings: list[Finding] = field(default_factory=list)
-    counts: dict[str, int] = field(default_factory=dict)
+    # Mixed value types (str/int/bool) — `claims` etc. are ints,
+    # `kb_dir` is a str, `index_present` is a bool. Was `dict[str, int]`
+    # but `status()` already returned the mixed dict via an untyped
+    # `dict` return annotation; the narrow type was effectively never
+    # checked. Widened to match runtime reality.
+    counts: dict[str, Any] = field(default_factory=dict)
 
 
-def status(store: KBStore) -> dict:
+def status(store: KBStore) -> dict[str, Any]:
     """Quick, machine-readable summary. No deep checks."""
     return {
         "kb_dir": str(store.kb_dir),
@@ -50,9 +59,41 @@ def status(store: KBStore) -> dict:
     }
 
 
-def lint(store: KBStore, *, stale_after_days: int = 180) -> HealthReport:
+def _load_claims_for_lint(store: KBStore) -> tuple[list[Claim], list[Finding]]:
+    """Iterate `claims/*.yaml` one file at a time so a single invalid
+    YAML can't crash the whole lint sweep — surface it as a finding
+    and keep going. This is the repair hint for KBs that have legacy
+    uncited claims from before the Claim.evidence min-citation
+    validator landed (#81): `vouch lint` lists them as
+    `invalid_claim` findings so the user can fix or delete the file
+    rather than seeing a bare `pydantic.ValidationError` traceback."""
+    valid: list[Claim] = []
     findings: list[Finding] = []
-    claims = store.list_claims()
+    cdir = store.kb_dir / "claims"
+    if not cdir.is_dir():
+        return valid, findings
+    for p in sorted(cdir.glob("*.yaml")):
+        cid = p.stem
+        try:
+            valid.append(Claim.model_validate(_yaml_load(p.read_text())))
+        except ValidationError as e:
+            tail = str(e).splitlines()[-1].strip() if str(e) else "validation failed"
+            findings.append(Finding(
+                "error", "invalid_claim",
+                f"claim {cid} ({p}) fails model validation: {tail} — "
+                "edit the YAML to add a citation, or delete the file",
+                [cid],
+            ))
+        except Exception as e:
+            findings.append(Finding(
+                "error", "unreadable_claim",
+                f"claim {cid} ({p}) could not be loaded: {e}", [cid],
+            ))
+    return valid, findings
+
+
+def lint(store: KBStore, *, stale_after_days: int = 180) -> HealthReport:
+    claims, findings = _load_claims_for_lint(store)
     sources_present = {s.id for s in store.list_sources()}
     evidence_present = {e.id for e in store.list_evidence()}
 
@@ -106,14 +147,39 @@ def lint(store: KBStore, *, stale_after_days: int = 180) -> HealthReport:
                 ))
 
     ok = not any(f.severity == "error" for f in findings)
-    return HealthReport(ok=ok, findings=findings, counts=status(store))
+    # Build counts inline rather than calling status(), because status()
+    # calls store.list_claims() which is strict and would re-raise on the
+    # same invalid YAMLs we just surfaced as findings. Use the safely-
+    # loaded `claims` list so the report is self-consistent.
+    counts = {
+        "kb_dir": str(store.kb_dir),
+        "claims": len(claims),
+        "pages": len(store.list_pages()),
+        "sources": len(sources_present),
+        "entities": len(store.list_entities()),
+        "relations": len(store.list_relations()),
+        "evidence": len(evidence_present),
+        "sessions": len(store.list_sessions()),
+        "pending_proposals": len(store.list_proposals(ProposalStatus.PENDING)),
+        "audit_events": count_events(store.kb_dir),
+        "index_present": (store.kb_dir / index_db.DB_FILENAME).exists(),
+    }
+    return HealthReport(ok=ok, findings=findings, counts=counts)
 
 
-def doctor(store: KBStore) -> HealthReport:
-    """Lint + source verification + index consistency. Slow but thorough."""
+def doctor(
+    store: KBStore, *, on_progress: Callable[[str], None] | None = None
+) -> HealthReport:
+    """Lint + source verification + index consistency. Slow but thorough.
+
+    `on_progress`, if given, is called with a short phase label as each stage
+    runs (source verification is the slow part). It never affects the result.
+    """
     report = lint(store)
 
     # Source integrity (content hash).
+    if on_progress is not None:
+        on_progress("sources")
     for vr in verify_all(store):
         if not vr.stored_ok:
             report.findings.append(Finding(
@@ -145,8 +211,19 @@ def doctor(store: KBStore) -> HealthReport:
     return report
 
 
-def rebuild_index(store: KBStore) -> dict:
-    """Drop and rebuild state.db from the durable files. Idempotent."""
+def rebuild_index(
+    store: KBStore, *, on_progress: Callable[[str], None] | None = None
+) -> dict:
+    """Drop and rebuild state.db from the durable files. Idempotent.
+
+    `on_progress`, if given, is called with a short phase label ("claims",
+    "pages", "entities", "embeddings") as each stage starts — for CLI
+    progress display. It never affects the result.
+    """
+    def _tick(phase: str) -> None:
+        if on_progress is not None:
+            on_progress(phase)
+
     # Detect a stale embedding-model identity before reset() wipes the meta.
     try:
         from . import audit
@@ -162,21 +239,25 @@ def rebuild_index(store: KBStore) -> dict:
         pass
     index_db.reset(store.kb_dir)
     with index_db.open_db(store.kb_dir) as conn:
+        _tick("claims")
         for c in store.list_claims():
             index_db.index_claim(
                 conn, id=c.id, text=c.text,
                 type=c.type.value, status=c.status.value, tags=c.tags,
             )
+        _tick("pages")
         for p in store.list_pages():
             index_db.index_page(
                 conn, id=p.id, title=p.title, body=p.body,
                 type=p.type.value, tags=p.tags,
             )
+        _tick("entities")
         for e in store.list_entities():
             index_db.index_entity(
                 conn, id=e.id, name=e.name, description=e.description,
                 type=e.type.value, aliases=e.aliases,
             )
+    _tick("embeddings")
     _rebuild_embeddings(store)
     return index_db.stats(store.kb_dir)
 
