@@ -6,6 +6,14 @@ All notable changes to vouch are documented here. Format follows
 
 ## [Unreleased]
 
+## [0.1.0] — 2026-05-26
+
+### Packaging
+- Published to PyPI as `vouch-kb` (the `vouch` name was already taken by an
+  unrelated project); the installed command is still `vouch`. Install with
+  `pipx install vouch-kb`. A tag-triggered release workflow publishes via PyPI
+  Trusted Publishing (OIDC).
+
 ### Added
 - `vouch approve <id1> <id2> …` approves multiple proposals in one
   non-interactive call for CI and backlog clearing (#93). Default is
@@ -15,6 +23,13 @@ All notable changes to vouch are documented here. Format follows
   (approve what you can, report the rest, exit non-zero on partial failure).
   One audit event is still recorded per approved artifact. Complements the
   interactive `vouch review` queue.
+- Friendlier CLI output (#54, track 2): colourised `vouch status` / `lint` /
+  `doctor` / `search` (honours `NO_COLOR`, `FORCE_COLOR`, and TTY detection);
+  `--json` on `vouch lint` and `vouch search` for machine-readable output
+  while the default stays human-readable; progress callbacks on the long ops
+  (`rebuild_index`, `doctor`, bundle `export`/`import_apply`) surfaced as
+  status lines on interactive terminals; and `vouch index` / `vouch export`
+  now report a clean `Error:` instead of a traceback on a malformed artifact.
 - `vouch sync-check` and `vouch sync-apply` reconcile another `.vouch`
   directory or bundle by importing only non-conflicting durable artifacts and
   reporting conflicts without overwriting reviewed knowledge.
@@ -139,5 +154,6 @@ Initial alpha. Surface intentionally small; expect breaking changes pre-1.0.
 - Claim validation: at least one source/evidence citation required.
 - Per-agent attribution via `VOUCH_AGENT` env var.
 
-[Unreleased]: https://github.com/plind-junior/vouch/compare/v0.0.1...HEAD
-[0.0.1]: https://github.com/plind-junior/vouch/releases/tag/v0.0.1
+[Unreleased]: https://github.com/vouchdev/vouch/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/vouchdev/vouch/compare/v0.0.1...v0.1.0
+[0.0.1]: https://github.com/vouchdev/vouch/releases/tag/v0.0.1

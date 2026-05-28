@@ -40,7 +40,10 @@ Skip it if:
 ## Install
 
 ```bash
-# from the cloned repo, in a venv
+# from PyPI (published as vouch-kb; the command is still `vouch`)
+pipx install vouch-kb
+
+# …or from the cloned repo, in a venv
 pip install -e '.[dev]'
 ```
 
