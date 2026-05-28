@@ -6,6 +6,16 @@ All notable changes to vouch are documented here. Format follows
 
 ## [Unreleased]
 
+### Added
+- `vouch conformance [SERVER_CMD]` — runnable conformance suite that
+  exercises the documented `kb.*` method surface against any JSONL server
+  and asserts SPEC §5 / §6 / §9 response shapes. Read-only checks are safe
+  against any KB; `--mutating` provisions a throwaway KB and runs the
+  review-gate path end-to-end (`propose_claim` → `list_pending` →
+  `approve` → `list_claims`, plus `reject`). Output is human-readable by
+  default or `--json` for machine consumption; exits non-zero on any
+  failure. Importable as `vouch.conformance` for pytest-style use (#98).
+
 ## [0.1.0] — 2026-05-26
 
 ### Packaging
