@@ -13,7 +13,8 @@ import uuid
 from datetime import UTC, datetime
 
 from . import audit, index_db
-from .models import Page, PageType, ProposalStatus, Session
+from .models import Page, PageType, ProposalKind, ProposalStatus, Session
+from .storage import _serialize_page
 from .proposals import approve
 from .storage import KBStore
 
@@ -95,18 +96,24 @@ def crystallize(
             })
 
     summary_page_id: str | None = None
-    if write_summary_page and approved_artifact_ids:
+    session_claim_ids = _approved_claim_ids_for_session(store, sess.id)
+    if write_summary_page and session_claim_ids:
         page = Page(
             id=f"session-{sess.id}",
             title=f"Session {sess.id}",
             type=PageType.SESSION,
-            body=_build_summary_body(sess, approved_artifact_ids),
+            body=_build_summary_body(sess, session_claim_ids),
             claims=[
-                aid for aid in approved_artifact_ids
-                if (store.kb_dir / "claims" / f"{aid}.yaml").exists()
+                cid for cid in session_claim_ids
+                if (store.kb_dir / "claims" / f"{cid}.yaml").exists()
             ],
         )
-        store.put_page(page)
+        page_path = store._page_path(page.id)
+        if page_path.exists():
+            page_path.write_text(_serialize_page(page))
+            store._embed_and_store(kind="page", id=page.id, text=f"{page.title}\n\n{page.body}")
+        else:
+            store.put_page(page)
         with index_db.open_db(store.kb_dir) as conn:
             index_db.index_page(
                 conn, id=page.id, title=page.title, body=page.body,
@@ -125,6 +132,17 @@ def crystallize(
         "failures": failures,
         "summary_page_id": summary_page_id,
     }
+
+
+def _approved_claim_ids_for_session(store: KBStore, session_id: str) -> list[str]:
+    claim_ids: list[str] = []
+    for proposal in store.list_proposals(ProposalStatus.APPROVED):
+        if proposal.session_id != session_id or proposal.kind != ProposalKind.CLAIM:
+            continue
+        claim_id = proposal.payload.get("id")
+        if isinstance(claim_id, str) and claim_id:
+            claim_ids.append(claim_id)
+    return sorted(set(claim_ids))
 
 
 def _build_summary_body(sess: Session, ids: list[str]) -> str:
