@@ -45,6 +45,38 @@ def test_session_lifecycle_and_crystallize(store: KBStore) -> None:
     }
 
 
+def test_crystallize_retry_after_partial_approval_updates_summary_page(store: KBStore) -> None:
+    from unittest.mock import patch
+
+    from vouch.proposals import approve as real_approve
+
+    src = store.put_source(b"e")
+    sess = sess_mod.session_start(store, agent="a")
+    propose_claim(store, text="one", evidence=[src.id], proposed_by="a", session_id=sess.id)
+    propose_claim(store, text="two", evidence=[src.id], proposed_by="a", session_id=sess.id)
+    sess_mod.session_end(store, sess.id)
+
+    calls = 0
+
+    def flaky(store, proposal_id, **kwargs):
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            raise ValueError("transient")
+        return real_approve(store, proposal_id, **kwargs)
+
+    with patch("vouch.sessions.approve", side_effect=flaky):
+        r1 = sess_mod.crystallize(store, sess.id, approver="u")
+    assert len(r1["approved"]) == 1
+    assert r1["summary_page_id"]
+
+    r2 = sess_mod.crystallize(store, sess.id, approver="u")
+    assert len(r2["approved"]) == 1
+    assert len(store.list_claims()) == 2
+    summary = store.get_page(r1["summary_page_id"])
+    assert len(summary.claims) == 2
+
+
 def test_crystallize_skips_already_approved(store: KBStore) -> None:
     src = store.put_source(b"e")
     sess = sess_mod.session_start(store, agent="a")
